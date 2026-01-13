@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>観測君VS ULTIMATE Ver 3.0</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        :root { --gold: #ffdf00; --blue: #3498db; --red: #e74c3c; --dark: #1a1a1a; }
+        body { margin: 0; color: white; font-family: 'Helvetica', sans-serif; background: #000; overflow: hidden; }
+        .master-bg { position: fixed; inset: 0; z-index: -10; background: radial-gradient(#333, #000); }
+        
+        /* カード基本スタイル */
+        .card { width: 95px; height: 145px; background: #fff; border-radius: 8px; color: #222; padding: 6px; position: relative; cursor: pointer; font-size: 10px; border: 1px solid #999; box-sizing: border-box; transition: 0.2s; }
+        .card:hover { transform: translateY(-5px); border-color: var(--gold); box-shadow: 0 5px 15px rgba(255,223,0,0.3); }
+        .card.MACHINE { border-top: 6px solid var(--blue); }
+        .card.SPELL { border-top: 6px solid var(--red); }
+        .card.GOAL { border: 3px solid var(--gold); background: #fff9c4; }
+        
+        /* カード内ステータス */
+        .cost { position: absolute; top: -8px; left: -8px; background: var(--gold); border-radius: 50%; width: 24px; height: 24px; text-align: center; font-weight: bold; border: 1.5px solid #000; line-height: 24px; z-index: 2; color: #000; }
+        .upkeep { position: absolute; bottom: 5px; left: 5px; color: var(--red); font-weight: bold; font-size: 9px; }
+        .power { position: absolute; bottom: 3px; right: 5px; font-size: 18px; font-weight: 900; color: var(--blue); }
+        
+        /* レイアウト */
+        #screen-battle { display: none; grid-template-columns: 1fr 300px; height: 100vh; }
+        .sidebar { background: rgba(0,0,0,0.85); border-left: 2px solid #444; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .field { display: flex; justify-content: center; gap: 10px; min-height: 170px; border-bottom: 1px dashed #444; align-items: center; }
+        .log { flex-grow: 1; overflow-y: auto; background: #050505; padding: 10px; font-size: 11px; color: #0f0; border: 1px solid #333; font-family: monospace; }
+
+        /* タイトル・ルール */
+        #rules-box { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 13px; line-height: 1.6; max-width: 600px; }
+        .rule-tag { color: var(--gold); font-weight: bold; margin-right: 5px; }
+
+        /* ボタン */
+        .btn { padding: 12px 24px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-gold { background: var(--gold); color: #000; }
+        .btn-gold:hover { filter: brightness(1.2); }
+    </style>
+</head>
+<body>
+    <div class="master-bg"></div>
+
+    <div id="screen-title" style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+        <h1 style="color:var(--gold); font-size:64px; text-shadow: 0 0 20px var(--gold); margin:0;">観測君VS ULTIMATE</h1>
+        <p style="color:#888; letter-spacing: 5px;">VER 3.0 FINAL EDITION</p>
+        
+        <div id="rules-box">
+            <h3 style="margin-top:0;">現場監督の心得（ルール説明）</h3>
+            <div style="text-align:left;">
+                <p><span class="rule-tag">●APシステム:</span> 毎ターン最大APが増加。維持費が最大APから引かれた分が使用可能APになる。</p>
+                <p><span class="rule-tag">●勝利条件:</span> 計測スコアを溜め、「勝利カード」を使用せよ！(10点 or 30点)</p>
+                <p><span class="rule-tag">●天候:</span> 豪雨はスペル禁止、濃霧は計測値半減。ドローンは霧に強い。</p>
+                <p><span class="rule-tag">●進化:</span> 下位機種が場にいれば、上位機種をコスト1で重ねて出せる！</p>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:20px; margin-top:30px;">
+            <button onclick="init('p1')" class="btn" style="background:var(--blue); color:#fff; font-size:18px;">P1: 工事部長 で開始</button>
+            <button onclick="init('p2')" class="btn" style="background:var(--red); color:#fff; font-size:18px;">P2: 測量主任 で開始</button>
+        </div>
+    </div>
+
+    <div id="screen-deck" style="display:none; padding:20px; height:100vh; box-sizing:border-box;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h2 style="color:var(--gold); margin:0;">デッキ編成 (<span id="deck-count">0</span>/40)</h2>
+            <div style="display:flex; gap:15px;">
+                <button onclick="loadDeck('TRAINING')" class="btn" style="background:#333; color:#fff;">社員育成デッキ</button>
+                <button onclick="loadDeck('LUXURY')" class="btn" style="background:#333; color:#fff;">高級機材デッキ</button>
+                <button onclick="submitDeck()" class="btn btn-gold">現場へ出撃！</button>
+            </div>
+        </div>
+        <div id="deck-grid" style="display:grid; grid-template-columns:repeat(9, 1fr); gap:10px; height:80vh; overflow-y:auto; background:rgba(0,0,0,0.3); padding:15px; border-radius:10px;"></div>
+    </div>
+
+    <div id="screen-battle">
+        <div id="turn-indicator" style="grid-column:1/-1; text-align:center; padding:10px; font-weight:bold; letter-spacing:10px; background:#222;">WAITING...</div>
+        <div style="display:flex; flex-direction:column; justify-content:space-between; height:calc(100vh - 45px);">
+            <div id="opp-field" class="field"></div>
+            <div id="my-field" class="field"></div>
+            <div id="my-hand" style="display:flex; justify-content:center; gap:8px; padding:20px; background:rgba(0,0,0,0.6); min-height:170px;"></div>
+        </div>
+        <div class="sidebar">
+            <div style="font-size:18px; color:#aaa;">Day <span id="turn-txt" style="color:#fff;">1</span> / 天候: <span id="weather-txt" style="color:var(--gold);">晴天</span></div>
+            <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #444; text-align:center;">
+                <div style="font-size:12px; color:#888;">現在の計測スコア</div>
+                <div id="my-score" style="font-size:48px; color:var(--gold); font-weight:bold;">0</div>
+                <hr style="border:0; border-top:1px solid #444; margin:10px 0;">
+                <div style="font-size:12px; color:#888;">残りAP / 最大AP</div>
+                <div id="my-ap" style="font-size:28px; color:#2ecc71;">2/2</div>
+            </div>
+            <div id="log" class="log"></div>
+            <button onclick="socket.emit('end_turn',{player_id:myId})" class="btn btn-gold" style="width:100%; font-size:20px;">ターン終了</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let myId, myDeck = [];
+
+        const MASTER_CARDS = [
+            {id:"Newbie", name:"新入社員", cost:1, power:1, upkeep:0, type:"MACHINE", desc:"1枚引く"},
+            {id:"Staff", name:"担当社員", cost:3, power:4, upkeep:1, type:"MACHINE", desc:"進化(1)"},
+            {id:"Chief", name:"主任技術者", cost:5, power:8, upkeep:0, type:"MACHINE", desc:"進化(1)維持0"},
+            {id:"Senior", name:"教育係", cost:2, power:3, upkeep:1, type:"MACHINE", desc:"新入パ+3"},
+            {id:"Ace", name:"エース", cost:4, power:12, upkeep:2, type:"MACHINE", desc:"高出力"},
+            {id:"Leader", name:"現場代理人", cost:6, power:15, upkeep:1, type:"MACHINE", desc:"高効率"},
+            {id:"Expert", name:"職人", cost:5, power:10, upkeep:2, type:"MACHINE", desc:"安定計測"},
+            {id:"Clerk", name:"事務員", cost:2, power:1, upkeep:0, type:"MACHINE", desc:"毎AP+1"},
+            {id:"Intern", name:"実習生", cost:0, power:0, upkeep:0, type:"MACHINE", desc:"コスト0"},
+            {id:"SafetyOfficer", name:"安全員", cost:3, power:2, upkeep:1, type:"MACHINE", desc:"防衛"},
+            {id:"LevelBasic", name:"普通レベル", cost:1, power:2, upkeep:1, type:"MACHINE", desc:"基本"},
+            {id:"LevelAuto", name:"オートレベル", cost:3, power:6, upkeep:1, type:"MACHINE", desc:"進化(1)"},
+            {id:"StaffBasic", name:"アルミS", cost:1, power:2, upkeep:1, type:"MACHINE", desc:"基本"},
+            {id:"StaffRef", name:"反射S", cost:3, power:7, upkeep:1, type:"MACHINE", desc:"進化(1)"},
+            {id:"TS", name:"光波TS", cost:4, power:10, upkeep:2, type:"MACHINE", desc:"主力"},
+            {id:"GNSS", name:"GNSS", cost:6, power:18, upkeep:3, type:"MACHINE", desc:"晴天+5"},
+            {id:"Drone", name:"ドローン", cost:5, power:14, upkeep:2, type:"MACHINE", desc:"霧無効"},
+            {id:"Scanner", name:"3Dスキャナ", cost:8, power:25, upkeep:3, type:"MACHINE", desc:"最強出力"},
+            {id:"UsedTS", name:"中古TS", cost:2, power:12, upkeep:2, type:"MACHINE", desc:"高維持費"},
+            {id:"Laser", name:"レーザー", cost:2, power:5, upkeep:1, type:"MACHINE", desc:"室内"},
+            {id:"Compass", name:"磁石", cost:1, power:1, upkeep:0, type:"MACHINE", desc:"方位"},
+            {id:"Tripod", name:"三脚", cost:1, power:1, upkeep:0, type:"MACHINE", desc:"基本"},
+            {id:"Caliper", name:"ノギス", cost:1, power:2, upkeep:1, type:"MACHINE", desc:"精密"},
+            {id:"Scale", name:"スケール", cost:1, power:1, upkeep:0, type:"MACHINE", desc:"基本"},
+            {id:"Chalk", name:"チョーク", cost:1, power:1, upkeep:0, type:"MACHINE", desc:"印"},
+            {id:"Excavator", name:"重機", cost:7, power:20, upkeep:4, type:"MACHINE", desc:"強力"},
+            {id:"Rental", name:"レンタル", cost:3, power:15, upkeep:5, type:"MACHINE", desc:"一時的"},
+            {id:"SmallTruck", name:"軽トラ", cost:2, power:1, upkeep:0, type:"MACHINE", desc:"設置安"},
+            {id:"Concrete", name:"生コン", cost:5, power:10, upkeep:3, type:"MACHINE", desc:"雨-5"},
+            {id:"Pump", name:"ポンプ", cost:3, power:0, upkeep:1, type:"MACHINE", desc:"雨無効"},
+            {id:"GenSet", name:"発電機", cost:3, power:3, upkeep:1, type:"MACHINE", desc:"全体+2"},
+            {id:"Radio", name:"無線機", cost:2, power:2, upkeep:1, type:"MACHINE", desc:"空強化"},
+            {id:"Lights", name:"投光器", cost:3, power:4, upkeep:1, type:"MACHINE", desc:"後半強"},
+            {id:"Helmet", name:"メット", cost:1, power:0, upkeep:0, type:"MACHINE", desc:"社員-1"},
+            {id:"Barrier", name:"看板", cost:2, power:0, upkeep:1, type:"MACHINE", desc:"妨害"},
+            {id:"Elite", name:"少数精鋭", cost:2, power:0, upkeep:0, type:"SPELL", desc:"社員2引"},
+            {id:"Decision", name:"決断", cost:0, power:0, upkeep:0, type:"SPELL", desc:"AP最大+2"},
+            {id:"Fund", name:"資金調達", cost:4, power:0, upkeep:0, type:"SPELL", desc:"AP最大+1"},
+            {id:"Transceiver", name:"社員呼出", cost:1, power:0, upkeep:0, type:"SPELL", desc:"社員引"},
+            {id:"Safety", name:"安全巡回", cost:3, power:0, upkeep:0, type:"SPELL", desc:"敵AP減"},
+            {id:"Lost", name:"紛失", cost:3, power:0, upkeep:0, type:"SPELL", desc:"破壊"},
+            {id:"Note", name:"野帳", cost:1, power:0, upkeep:0, type:"SPELL", desc:"2枚引"},
+            {id:"Repair", name:"修理", cost:2, power:0, upkeep:0, type:"SPELL", desc:"AP5回復"},
+            {id:"Check", name:"Wチェック", cost:2, power:0, upkeep:0, type:"SPELL", desc:"3枚引"},
+            {id:"Bush", name:"藪払い", cost:2, power:0, upkeep:0, type:"SPELL", desc:"小粒破壊"},
+            {id:"Rush", name:"突貫", cost:0, power:0, upkeep:0, type:"SPELL", desc:"AP+4/壊"},
+            {id:"Consult", name:"予報", cost:1, power:0, upkeep:0, type:"SPELL", desc:"晴天"},
+            {id:"Training", name:"手当", cost:2, power:0, upkeep:0, type:"SPELL", desc:"社員強化"},
+            {id:"NightWork", name:"徹夜", cost:0, power:0, upkeep:0, type:"SPELL", desc:"AP全快"},
+            {id:"Complaint", name:"苦情", cost:3, power:0, upkeep:0, type:"SPELL", desc:"相手AP減"},
+            {id:"Boundary", name:"境界", cost:2, power:0, upkeep:0, type:"SPELL", desc:"停止"},
+            {id:"Overtime", name:"残業", cost:2, power:0, upkeep:0, type:"SPELL", desc:"引/AP+"},
+            {id:"Audit", name:"監査", cost:4, power:0, upkeep:0, type:"SPELL", desc:"最大AP減"},
+            {id:"Goal30", name:"工期完遂", cost:4, power:0, upkeep:0, type:"GOAL", desc:"30で勝利"},
+            {id:"GoalFinal", name:"社長決裁", cost:10, power:0, upkeep:0, type:"GOAL", desc:"10で勝利"}
+        ];
+
+        function init(id) {
+            myId = id;
+            document.getElementById('screen-title').style.display = 'none';
+            document.getElementById('screen-deck').style.display = 'block';
+            renderDeckGrid();
+        }
+
+        function renderDeckGrid() {
+            const grid = document.getElementById('deck-grid');
+            grid.innerHTML = "";
+            MASTER_CARDS.forEach(c => {
+                const d = document.createElement('div');
+                d.className = `card ${c.type}`;
+                d.innerHTML = `
+                    <div class="cost">${c.cost}</div>
+                    <b>${c.name}</b><br><small>${c.desc}</small>
+                    <div class="upkeep">維持:${c.upkeep}</div>
+                    <div class="power">${c.power || ''}</div>
+                `;
+                d.onclick = () => {
+                    if(myDeck.filter(x => x === c.id).length < 4 && myDeck.length < 40) {
+                        myDeck.push(c.id);
+                        document.getElementById('deck-count').innerText = myDeck.length;
+                    }
+                };
+                grid.appendChild(d);
+            });
+        }
+
+        function loadDeck(mode) {
+            const presets = {
+                TRAINING: ["Newbie","Newbie","Newbie","Newbie","Staff","Staff","Staff","Staff","Chief","Chief","Chief","Chief","Elite","Elite","Fund","Fund","Note","Note","Repair","Repair","LevelBasic","LevelBasic","LevelAuto","LevelAuto","Clerk","Clerk","GoalFinal","GoalFinal","Goal30","Goal30","Consult","Consult","Training","Training","Senior","Senior","Check","Check","Note","Note"],
+                LUXURY: ["Excavator","Excavator","Excavator","Rental","Rental","GNSS","GNSS","GNSS","Drone","Drone","Drone","GenSet","GenSet","Radio","Radio","Rush","Rush","Repair","Repair","SmallTruck","SmallTruck","Goal30","Goal30","TS","TS","Decision","Decision","Scanner","Concrete","Concrete","Pump","Note","Note","NightWork","Overtime","Overtime","GoalFinal","UsedTS","UsedTS","UsedTS"]
+            };
+            myDeck = [...presets[mode]];
+            document.getElementById('deck-count').innerText = myDeck.length;
+        }
+
+        function submitDeck() {
+            if(myDeck.length < 40) return alert("40枚選んでください！");
+            socket.emit('submit_deck', {player_id: myId, deck: myDeck});
+            document.getElementById('screen-deck').style.display = 'none';
+            document.getElementById('screen-battle').style.display = 'grid';
+        }
+
+        socket.on('update_ui', s => {
+            const me = s.players[myId], opp = s.players[myId==='p1'?'p2':'p1'];
+            const ind = document.getElementById('turn-indicator');
+            
+            ind.innerText = s.turn === myId ? "YOUR TURN" : "ENEMY TURN";
+            ind.style.color = s.turn === myId ? "var(--blue)" : "var(--red)";
+
+            document.getElementById('my-score').innerText = me.score;
+            document.getElementById('my-ap').innerText = `${me.ap}/${me.max_ap}`;
+            document.getElementById('weather-txt').innerText = s.weather;
+            document.getElementById('turn-txt').innerText = s.turn_count;
+            
+            const render = (c, i, isMe) => `
+                <div class="card ${c.type}" onclick="${isMe ? `socket.emit('play_card',{player_id:myId,card_index:${i}})` : ''}">
+                    <div class="cost">${c.cost}</div><b>${c.name}</b><br><small>${c.desc}</small>
+                    <div class="upkeep">維持:${c.upkeep||0}</div>
+                    <div class="power">${c.power||''}</div>
+                </div>`;
+            
+            document.getElementById('my-hand').innerHTML = me.hand.map((c, i) => render(c, i, true)).join('');
+            document.getElementById('my-field').innerHTML = me.field.map(c => render(c, 0, false)).join('');
+            document.getElementById('opp-field').innerHTML = opp.field.map(c => render(c, 0, false)).join('');
+            document.getElementById('log').innerHTML = s.log.slice(-12).map(l => `<div>> ${l}</div>`).join('');
+
+            if(s.winner) {
+                alert(s.winner === myId ? "観測成功！勝利です！" : "観測失敗...敗北しました。");
+                location.reload();
+            }
+        });
+    </script>
+</body>
+</html>
