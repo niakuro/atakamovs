@@ -21,7 +21,10 @@
         .upkeep { position: absolute; bottom: 5px; left: 5px; color: var(--red); font-weight: bold; font-size: 9px; }
         .power { position: absolute; bottom: 3px; right: 5px; font-size: 18px; font-weight: 900; color: var(--blue); }
         
-        /* デッキ枚数バッジ（追加） */
+        /* 修正箇所：カード名の位置を左にずらす */
+        .card b { margin-left: 14px; display: inline-block; }
+
+        /* デッキ枚数バッジ */
         .deck-badge { position: absolute; top: 0px; right: 0px; background: #000; color: #fff; padding: 2px 6px; border-radius: 0 8px 0 8px; font-weight: bold; font-size: 12px; border: 1px solid var(--gold); z-index: 5; }
 
         /* レイアウト */
@@ -38,10 +41,37 @@
         .btn { padding: 12px 24px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-gold { background: var(--gold); color: #000; }
         .btn-gold:hover { filter: brightness(1.2); }
+
+        /* 追加：ターン演出オーバーレイ */
+        #turn-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center;
+            z-index: 1000; pointer-events: none;
+        }
+        #turn-overlay-text {
+            font-size: 80px; font-weight: 900; color: var(--gold);
+            text-shadow: 0 0 30px #000; text-align: center;
+            border: 5px solid var(--gold); padding: 20px 60px; background: #222;
+        }
+
+        /* 追加：リザルト画面 */
+        #result-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 2000;
+        }
+        #result-title { font-size: 60px; font-weight: bold; margin-bottom: 30px; }
     </style>
 </head>
 <body>
     <div class="master-bg"></div>
+
+    <div id="turn-overlay"><div id="turn-overlay-text"></div></div>
+
+    <div id="result-modal">
+        <div id="result-title"></div>
+        <button class="btn btn-gold" onclick="location.reload()">タイトルに戻る</button>
+    </div>
 
     <div id="screen-title" style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
         <h1 style="color:var(--gold); font-size:64px; text-shadow: 0 0 20px var(--gold); margin:0;">観測君VS ULTIMATE</h1>
@@ -99,6 +129,7 @@
     <script>
         const socket = io();
         let myId, myDeck = [];
+        let lastTurn = null; // ターン演出用
 
         const MASTER_CARDS = [
             {id:"Newbie", name:"新入社員", cost:1, power:1, upkeep:0, type:"MACHINE", desc:"1枚引く"},
@@ -165,7 +196,7 @@
             renderDeckGrid();
         }
 
-        // デッキ画面の描画（枚数表示機能を追加）
+        // デッキ画面の描画
         function renderDeckGrid() {
             const grid = document.getElementById('deck-grid');
             grid.innerHTML = "";
@@ -181,7 +212,6 @@
                     <div class="deck-badge">${currentCount}</div>
                 `;
                 
-                // クリックロジック：0→1→2→3→4→0（5回目でリセット）
                 d.onclick = () => {
                     const count = myDeck.filter(id => id === c.id).length;
                     if (count < 4) {
@@ -191,11 +221,10 @@
                             alert("デッキは最大40枚です！");
                         }
                     } else {
-                        // 5回目のクリック（すでに4枚）で0枚にする
                         myDeck = myDeck.filter(id => id !== c.id);
                     }
                     document.getElementById('deck-count').innerText = myDeck.length;
-                    renderDeckGrid(); // 枚数表示を即座に更新するために再描画
+                    renderDeckGrid();
                 };
                 grid.appendChild(d);
             });
@@ -208,7 +237,7 @@
             };
             myDeck = [...presets[mode]];
             document.getElementById('deck-count').innerText = myDeck.length;
-            renderDeckGrid(); // プリセット読み込み時も枚数表示を更新
+            renderDeckGrid();
         }
 
         function submitDeck() {
@@ -224,6 +253,16 @@
             
             ind.innerText = s.turn === myId ? "YOUR TURN" : "ENEMY TURN";
             ind.style.color = s.turn === myId ? "var(--blue)" : "var(--red)";
+
+            // 追加：ターン演出（ターン保持者が変わったら表示）
+            if (lastTurn && lastTurn !== s.turn) {
+                const ov = document.getElementById('turn-overlay');
+                const txt = document.getElementById('turn-overlay-text');
+                txt.innerHTML = `Day ${s.turn_count} <br> PLAYER ${s.turn === 'p1' ? '1' : '2'}`;
+                ov.style.display = 'flex';
+                setTimeout(() => { ov.style.display = 'none'; }, 2000);
+            }
+            lastTurn = s.turn;
 
             document.getElementById('my-score').innerText = me.score;
             document.getElementById('my-ap').innerText = `${me.ap}/${me.max_ap}`;
@@ -242,11 +281,22 @@
             document.getElementById('opp-field').innerHTML = opp.field.map(c => render(c, 0, false)).join('');
             document.getElementById('log').innerHTML = s.log.slice(-12).map(l => `<div>> ${l}</div>`).join('');
 
+            // 修正：リザルトモーダルの表示
             if(s.winner) {
-                alert(s.winner === myId ? "観測成功！勝利です！" : "観測失敗...敗北しました。");
-                location.reload();
+                const modal = document.getElementById('result-modal');
+                const title = document.getElementById('result-title');
+                modal.style.display = 'flex';
+                if (s.winner === myId) {
+                    title.innerText = "観測完了！";
+                    title.style.color = "var(--gold)";
+                } else {
+                    title.innerText = "観測失敗！";
+                    title.style.color = "#888";
+                }
             }
         });
     </script>
 </body>
 </html>
+</html>
+
