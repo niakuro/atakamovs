@@ -21,6 +21,9 @@
         .upkeep { position: absolute; bottom: 5px; left: 5px; color: var(--red); font-weight: bold; font-size: 9px; }
         .power { position: absolute; bottom: 3px; right: 5px; font-size: 18px; font-weight: 900; color: var(--blue); }
         
+        /* デッキ枚数バッジ（追加） */
+        .deck-badge { position: absolute; top: 0px; right: 0px; background: #000; color: #fff; padding: 2px 6px; border-radius: 0 8px 0 8px; font-weight: bold; font-size: 12px; border: 1px solid var(--gold); z-index: 5; }
+
         /* レイアウト */
         #screen-battle { display: none; grid-template-columns: 1fr 300px; height: 100vh; }
         .sidebar { background: rgba(0,0,0,0.85); border-left: 2px solid #444; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
@@ -162,10 +165,12 @@
             renderDeckGrid();
         }
 
+        // デッキ画面の描画（枚数表示機能を追加）
         function renderDeckGrid() {
             const grid = document.getElementById('deck-grid');
             grid.innerHTML = "";
             MASTER_CARDS.forEach(c => {
+                const currentCount = myDeck.filter(id => id === c.id).length;
                 const d = document.createElement('div');
                 d.className = `card ${c.type}`;
                 d.innerHTML = `
@@ -173,12 +178,24 @@
                     <b>${c.name}</b><br><small>${c.desc}</small>
                     <div class="upkeep">維持:${c.upkeep}</div>
                     <div class="power">${c.power || ''}</div>
+                    <div class="deck-badge">${currentCount}</div>
                 `;
+                
+                // クリックロジック：0→1→2→3→4→0（5回目でリセット）
                 d.onclick = () => {
-                    if(myDeck.filter(x => x === c.id).length < 4 && myDeck.length < 40) {
-                        myDeck.push(c.id);
-                        document.getElementById('deck-count').innerText = myDeck.length;
+                    const count = myDeck.filter(id => id === c.id).length;
+                    if (count < 4) {
+                        if (myDeck.length < 40) {
+                            myDeck.push(c.id);
+                        } else {
+                            alert("デッキは最大40枚です！");
+                        }
+                    } else {
+                        // 5回目のクリック（すでに4枚）で0枚にする
+                        myDeck = myDeck.filter(id => id !== c.id);
                     }
+                    document.getElementById('deck-count').innerText = myDeck.length;
+                    renderDeckGrid(); // 枚数表示を即座に更新するために再描画
                 };
                 grid.appendChild(d);
             });
@@ -191,6 +208,7 @@
             };
             myDeck = [...presets[mode]];
             document.getElementById('deck-count').innerText = myDeck.length;
+            renderDeckGrid(); // プリセット読み込み時も枚数表示を更新
         }
 
         function submitDeck() {
