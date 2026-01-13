@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>観測君VS ULTIMATE Ver 3.0</title>
+    <title>観測君VS ULTIMATE Ver 3.1</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         :root { --gold: #ffdf00; --blue: #3498db; --red: #e74c3c; --dark: #1a1a1a; }
@@ -21,8 +21,9 @@
         .upkeep { position: absolute; bottom: 5px; left: 5px; color: var(--red); font-weight: bold; font-size: 9px; }
         .power { position: absolute; bottom: 3px; right: 5px; font-size: 18px; font-weight: 900; color: var(--blue); }
         
-        /* 修正箇所：カード名の位置を左にずらす */
-        .card b { margin-left: 14px; display: inline-block; }
+        /* カード名と効果のレイアウト */
+        .card b { margin-left: 14px; display: inline-block; font-size: 11px; margin-bottom: 2px;}
+        .card small { display: block; line-height: 1.2; font-size: 9px; color: #444; height: 95px; overflow: hidden; }
 
         /* デッキ枚数バッジ */
         .deck-badge { position: absolute; top: 0px; right: 0px; background: #000; color: #fff; padding: 2px 6px; border-radius: 0 8px 0 8px; font-weight: bold; font-size: 12px; border: 1px solid var(--gold); z-index: 5; }
@@ -42,7 +43,7 @@
         .btn-gold { background: var(--gold); color: #000; }
         .btn-gold:hover { filter: brightness(1.2); }
 
-        /* 追加：ターン演出オーバーレイ */
+        /* ターン演出オーバーレイ */
         #turn-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center;
@@ -54,7 +55,7 @@
             border: 5px solid var(--gold); padding: 20px 60px; background: #222;
         }
 
-        /* 追加：リザルト画面 */
+        /* リザルト画面 */
         #result-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center;
@@ -70,7 +71,7 @@
 
     <div id="result-modal">
         <div id="result-title"></div>
-        <button class="btn btn-gold" onclick="location.reload()">タイトルに戻る</button>
+        <button class="btn btn-gold" onclick="backToTitle()">タイトルに戻る</button>
     </div>
 
     <div id="screen-title" style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
@@ -129,8 +130,9 @@
     <script>
         const socket = io();
         let myId, myDeck = [];
-        let lastTurn = null; // ターン演出用
+        let lastTurn = null;
 
+        // クライアント側マスターデータの修正（サーバー側と文言を合わせる）
         const MASTER_CARDS = [
             {id:"Newbie", name:"新入社員", cost:1, power:1, upkeep:0, type:"MACHINE", desc:"1枚引く"},
             {id:"Staff", name:"担当社員", cost:3, power:4, upkeep:1, type:"MACHINE", desc:"進化(1)"},
@@ -167,10 +169,10 @@
             {id:"Lights", name:"投光器", cost:3, power:4, upkeep:1, type:"MACHINE", desc:"後半強"},
             {id:"Helmet", name:"メット", cost:1, power:0, upkeep:0, type:"MACHINE", desc:"社員-1"},
             {id:"Barrier", name:"看板", cost:2, power:0, upkeep:1, type:"MACHINE", desc:"妨害"},
-            {id:"Elite", name:"少数精鋭", cost:2, power:0, upkeep:0, type:"SPELL", desc:"社員2引"},
+            {id:"Elite", name:"少数精鋭", cost:2, power:0, upkeep:0, type:"SPELL", desc:"2枚引"},
             {id:"Decision", name:"決断", cost:0, power:0, upkeep:0, type:"SPELL", desc:"AP最大+2"},
             {id:"Fund", name:"資金調達", cost:4, power:0, upkeep:0, type:"SPELL", desc:"AP最大+1"},
-            {id:"Transceiver", name:"社員呼出", cost:1, power:0, upkeep:0, type:"SPELL", desc:"社員引"},
+            {id:"Transceiver", name:"社員呼出", cost:1, power:0, upkeep:0, type:"SPELL", desc:"1枚引"},
             {id:"Safety", name:"安全巡回", cost:3, power:0, upkeep:0, type:"SPELL", desc:"敵AP減"},
             {id:"Lost", name:"紛失", cost:3, power:0, upkeep:0, type:"SPELL", desc:"破壊"},
             {id:"Note", name:"野帳", cost:1, power:0, upkeep:0, type:"SPELL", desc:"2枚引"},
@@ -183,7 +185,7 @@
             {id:"NightWork", name:"徹夜", cost:0, power:0, upkeep:0, type:"SPELL", desc:"AP全快"},
             {id:"Complaint", name:"苦情", cost:3, power:0, upkeep:0, type:"SPELL", desc:"相手AP減"},
             {id:"Boundary", name:"境界", cost:2, power:0, upkeep:0, type:"SPELL", desc:"停止"},
-            {id:"Overtime", name:"残業", cost:2, power:0, upkeep:0, type:"SPELL", desc:"引/AP+"},
+            {id:"Overtime", name:"残業", cost:0, power:0, upkeep:0, type:"SPELL", desc:"引/AP+"},
             {id:"Audit", name:"監査", cost:4, power:0, upkeep:0, type:"SPELL", desc:"最大AP減"},
             {id:"Goal30", name:"工期完遂", cost:4, power:0, upkeep:0, type:"GOAL", desc:"30で勝利"},
             {id:"GoalFinal", name:"社長決裁", cost:10, power:0, upkeep:0, type:"GOAL", desc:"10で勝利"}
@@ -196,7 +198,6 @@
             renderDeckGrid();
         }
 
-        // デッキ画面の描画
         function renderDeckGrid() {
             const grid = document.getElementById('deck-grid');
             grid.innerHTML = "";
@@ -247,6 +248,11 @@
             document.getElementById('screen-battle').style.display = 'grid';
         }
 
+        function backToTitle() {
+            socket.emit('reset_game');
+            setTimeout(() => { location.reload(); }, 100);
+        }
+
         socket.on('update_ui', s => {
             const me = s.players[myId], opp = s.players[myId==='p1'?'p2':'p1'];
             const ind = document.getElementById('turn-indicator');
@@ -254,11 +260,11 @@
             ind.innerText = s.turn === myId ? "YOUR TURN" : "ENEMY TURN";
             ind.style.color = s.turn === myId ? "var(--blue)" : "var(--red)";
 
-            // 追加：ターン演出（ターン保持者が変わったら表示）
+            // 修正：ターン演出に天候を追加
             if (lastTurn && lastTurn !== s.turn) {
                 const ov = document.getElementById('turn-overlay');
                 const txt = document.getElementById('turn-overlay-text');
-                txt.innerHTML = `Day ${s.turn_count} <br> PLAYER ${s.turn === 'p1' ? '1' : '2'}`;
+                txt.innerHTML = `Day ${s.turn_count} <br> PLAYER ${s.turn === 'p1' ? '1' : '2'} <br> <div style="font-size:40px; margin-top:10px;">${s.weather}</div>`;
                 ov.style.display = 'flex';
                 setTimeout(() => { ov.style.display = 'none'; }, 2000);
             }
@@ -279,9 +285,9 @@
             document.getElementById('my-hand').innerHTML = me.hand.map((c, i) => render(c, i, true)).join('');
             document.getElementById('my-field').innerHTML = me.field.map(c => render(c, 0, false)).join('');
             document.getElementById('opp-field').innerHTML = opp.field.map(c => render(c, 0, false)).join('');
+            // ログの表示エリアを少し見やすく
             document.getElementById('log').innerHTML = s.log.slice(-12).map(l => `<div>> ${l}</div>`).join('');
 
-            // 修正：リザルトモーダルの表示
             if(s.winner) {
                 const modal = document.getElementById('result-modal');
                 const title = document.getElementById('result-title');
@@ -297,6 +303,5 @@
         });
     </script>
 </body>
-</html>
 </html>
 
