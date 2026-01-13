@@ -142,14 +142,14 @@ def handle_play(data):
             if card["id"] == "Newbie" and p["deck"]: p["hand"].append(p["deck"].pop(0))
             if card["id"] == "Elite":
                 p["max_ap"] = max(1, p["max_ap"]-1)
-                for _ in range(2):
+                for _ in range(2): 
                     if p["deck"]: p["hand"].append(p["deck"].pop(0))
             elif card["id"] == "Fund": p["max_ap"] += 1
             elif card["id"] == "Note":
                 for _ in range(2):
                     if p["deck"]: p["hand"].append(p["deck"].pop(0))
             elif card["id"] == "Repair": p["ap"] = min(p["max_ap"], p["ap"] + 5)
-
+        
         game.log.append(f"{pid.upper()}: {card['name']} 使用")
         if card["id"] == "GoalFinal" and p["score"] >= 10: game.winner = pid
         if card["id"] == "Goal30" and p["score"] >= 30: game.winner = pid
