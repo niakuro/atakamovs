@@ -12,7 +12,7 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'kanzoku-kun-v3-ultimate'
+app.config['SECRET_KEY'] = 'kanzoku-kun-v3.1-ultimate'
 socketio = SocketIO(app)
 
 # --- 55種類のカードデータベース ---
@@ -52,10 +52,10 @@ CARD_DB = [
     {"id": "Lights", "name": "投光器", "cost": 3, "power": 4, "type": "MACHINE", "upkeep": 1, "desc": "後半でパワーアップ。"},
     {"id": "Helmet", "name": "ヘルメット", "cost": 1, "power": 0, "type": "MACHINE", "upkeep": 0, "desc": "社員コストを軽減。"},
     {"id": "Barrier", "name": "工事看板", "cost": 2, "power": 0, "type": "MACHINE", "upkeep": 1, "desc": "相手の行動を抑制。"},
-    {"id": "Elite", "name": "少数精鋭", "cost": 2, "power": 0, "type": "SPELL", "desc": "最大AP-1。社員2枚引く。"},
+    {"id": "Elite", "name": "少数精鋭", "cost": 2, "power": 0, "type": "SPELL", "desc": "最大AP-1。2枚引く。"},
     {"id": "Decision", "name": "苦渋の決断", "cost": 0, "power": 0, "type": "SPELL", "desc": "手札から強カードを捨て最大AP+2。"},
     {"id": "Fund", "name": "資金調達", "cost": 4, "power": 0, "type": "SPELL", "desc": "永久に最大AP+1。"},
-    {"id": "Transceiver", "name": "トランシーバー", "cost": 1, "power": 0, "type": "SPELL", "desc": "デッキから社員を1枚引く。"},
+    {"id": "Transceiver", "name": "トランシーバー", "cost": 1, "power": 0, "type": "SPELL", "desc": "デッキから1枚引く。"},
     {"id": "Safety", "name": "安全巡回", "cost": 3, "power": 0, "type": "SPELL", "desc": "相手の最大AP-1。"},
     {"id": "Lost", "name": "紛失事故", "cost": 3, "power": 0, "type": "SPELL", "desc": "相手のパワー10以上を1台破壊。"},
     {"id": "Note", "name": "電子野帳", "cost": 1, "power": 0, "type": "SPELL", "desc": "カードを2枚引く。"},
@@ -68,7 +68,7 @@ CARD_DB = [
     {"id": "NightWork", "name": "徹夜作業", "cost": 0, "power": 0, "type": "SPELL", "desc": "AP全快。ただし手札を全て捨てる。"},
     {"id": "Complaint", "name": "近隣クレーム", "cost": 3, "power": 0, "type": "SPELL", "desc": "相手のAPを3削る。"},
     {"id": "Boundary", "name": "境界未確定", "cost": 2, "power": 0, "type": "SPELL", "desc": "相手の機材1つを2ターン停止。"},
-    {"id": "Overtime", "name": "残業指示", "cost": 2, "power": 0, "type": "SPELL", "desc": "1枚引いてAP+2。"},
+    {"id": "Overtime", "name": "残業指示", "cost": 0, "power": 0, "type": "SPELL", "desc": "1枚引いてAP+2。"},
     {"id": "Audit", "name": "会計検査", "cost": 4, "power": 0, "type": "SPELL", "desc": "相手の最大APを2削る。"},
     {"id": "Goal30", "name": "工期内完遂", "cost": 4, "power": 0, "type": "GOAL", "desc": "スコア30以上で勝利。"},
     {"id": "GoalFinal", "name": "社長決裁", "cost": 10, "power": 0, "type": "GOAL", "desc": "スコア10以上で勝利。"},
@@ -89,13 +89,18 @@ class GameInstance:
         self.turn_count = 1
         self.weather = "晴天"
         self.winner = None
-        self.log = ["観測君VS ULTIMATE Ver 3.0 開始！"]
+        self.log = ["観測君VS ULTIMATE Ver 3.1 開始！"]
 
 game = GameInstance()
 
 @app.route('/')
 def index():
     return render_template('ultimate.html')
+
+@socketio.on('reset_game')
+def handle_reset():
+    game.reset()
+    emit('update_ui', vars(game), broadcast=True)
 
 @socketio.on('submit_deck')
 def handle_deck(data):
@@ -116,6 +121,7 @@ def handle_play(data):
     card = p["hand"][idx]
 
     if game.weather == "豪雨" and card["type"] == "SPELL":
+        # 修正：効果の表示
         game.log.append("【豪雨】スペル使用不可！")
         emit('update_ui', vars(game), broadcast=True)
         return
@@ -140,7 +146,7 @@ def handle_play(data):
         else:
             if card["type"] == "MACHINE": p["field"].append(card)
             
-            # --- スペル効果の実装（修正：AP回復等が機能するように追加） ---
+            # スペル効果の実装
             if card["id"] == "Newbie" and p["deck"]: p["hand"].append(p["deck"].pop(0))
             elif card["id"] == "Elite":
                 p["max_ap"] = max(1, p["max_ap"]-1)
@@ -151,17 +157,18 @@ def handle_play(data):
                 for _ in range(2):
                     if p["deck"]: p["hand"].append(p["deck"].pop(0))
             elif card["id"] == "Repair": p["ap"] = min(p["max_ap"], p["ap"] + 5)
-            # 修正箇所：以下のAP回復系カードの実装を追加
             elif card["id"] == "Rush": p["ap"] += 4
             elif card["id"] == "Decision": p["max_ap"] += 2
             elif card["id"] == "Overtime":
                 if p["deck"]: p["hand"].append(p["deck"].pop(0))
                 p["ap"] += 2
             elif card["id"] == "NightWork":
-                p["hand"] = [] # 手札を全て捨てる
-                p["ap"] = p["max_ap"] # AP全快
+                p["hand"] = []
+                p["ap"] = p["max_ap"]
 
-        game.log.append(f"{pid.upper()}: {card['name']} 使用")
+        # ログに使用したカードと効果を表示
+        game.log.append(f"{pid.upper()}: {card['name']} ({card['desc']})")
+        
         if card["id"] == "GoalFinal" and p["score"] >= 10: game.winner = pid
         if card["id"] == "Goal30" and p["score"] >= 30: game.winner = pid
         recalc_scores()
@@ -196,5 +203,7 @@ def end_turn(data):
     recalc_scores()
     emit('update_ui', vars(game), broadcast=True)
 
+if __name__ == '__main__':
+    socketio.run(app, debug=True)
 if __name__ == '__main__':
     socketio.run(app, debug=True)
