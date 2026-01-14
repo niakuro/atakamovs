@@ -130,6 +130,8 @@
     <script>
         // Socket.IO initialization with error handling
         let socket;
+        const NETWORK_ERROR_MSG = 'ネットワークエラー: 接続できません';
+        
         try {
             if (typeof io !== 'undefined') {
                 socket = io();
@@ -255,7 +257,7 @@
 
         function submitDeck() {
             if(myDeck.length < 40) return alert("40枚選んでください！");
-            if (!socket) return alert('ネットワークエラー: 接続できません');
+            if (!socket) return alert(NETWORK_ERROR_MSG);
             socket.emit('submit_deck', {player_id: myId, deck: myDeck});
             document.getElementById('screen-deck').style.display = 'none';
             document.getElementById('screen-battle').style.display = 'grid';
@@ -267,12 +269,12 @@
         }
 
         function endTurn() {
-            if (!socket) return alert('ネットワークエラー: 接続できません');
+            if (!socket) return alert(NETWORK_ERROR_MSG);
             socket.emit('end_turn', {player_id: myId});
         }
 
         function playCard(idx) {
-            if (!socket) return alert('ネットワークエラー: 接続できません');
+            if (!socket) return alert(NETWORK_ERROR_MSG);
             socket.emit('play_card', {player_id: myId, card_index: idx});
         }
 
