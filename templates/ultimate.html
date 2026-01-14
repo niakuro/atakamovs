@@ -325,7 +325,7 @@
         </div>
     </div>
 
-    <div id="screen-waiting" style="display:none; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+    <div id="screen-waiting" style="display:none; height:100vh; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
         <h1 style="color:var(--gold); font-size:48px; text-shadow: 0 0 20px var(--gold); margin:0;">参加者待機中...</h1>
         <div style="margin-top:30px; background:rgba(20, 30, 48, 0.9); padding:30px; border-radius:15px; border:2px solid rgba(241, 196, 15, 0.4);">
             <p style="font-size:24px; color:#fff;">ルーム番号</p>
@@ -567,7 +567,7 @@
                     <div class="upkeep">維持:${c.upkeep}</div>
                     <div class="power">${c.power || ''}</div>
                     <div class="deck-badge">${currentCount}</div>
-                    <div style="position:absolute; bottom:5px; left:0; right:0; display:flex; gap:5px; justify-content:center;">
+                    <div style="position:absolute; bottom:35px; left:0; right:0; display:flex; gap:5px; justify-content:center;">
                         <button onclick="removeCard('${c.id}', event)" class="deck-btn" style="background:#e74c3c; width:35px; height:30px; border:none; border-radius:5px; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">−</button>
                         <button onclick="addCard('${c.id}', event)" class="deck-btn" style="background:#27ae60; width:35px; height:30px; border:none; border-radius:5px; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">＋</button>
                     </div>
@@ -597,10 +597,9 @@
                     "SafetyOfficer","SafetyOfficer",  // 安全管理
                     "Training","Training","Training",  // 研修で社員強化
                     "Elite","Elite",  // 少数精鋭
-                    "Note","Note","Check",  // ドロー
+                    "Note","Note","Check","Check",  // ドロー
                     "Repair","Repair","Overtime",  // AP管理
                     "Decision","Fund",  // 最大AP増加
-                    "Helmet","Helmet",  // 安全装備
                     "Lost","Bush",  // 除去
                     "Goal30","Goal30","GoalFinal"  // 勝利条件
                 ],
@@ -619,8 +618,8 @@
                     "SmallTruck","SmallTruck",  // 軽トラで設置サポート
                     "Note","Note","Check","Check",  // ドロー
                     "Repair","Repair","Overtime",  // AP管理
-                    "Consult","Consult",  // 天候操作
-                    "Lost","Boundary",  // 除去・凍結
+                    "Consult",  // 天候操作
+                    "Lost",  // 除去
                     "Goal30","Goal30","GoalFinal"  // 勝利条件
                 ],
                 
@@ -639,9 +638,9 @@
                     "Clerk","Clerk",  // 事務員（AP回復）
                     "Rush","Rush",  // 突貫工事
                     "Note","Note","Elite",  // ドロー
-                    "NightWork","Repair","Repair","Overtime","Overtime",  // AP大量管理
-                    "Decision","Decision",  // 最大AP増加
-                    "Lost","Safety",  // 除去・妨害
+                    "NightWork","Repair","Overtime","Overtime",  // AP大量管理
+                    "Decision",  // 最大AP増加
+                    "Lost",  // 除去
                     "Goal30","Goal30","GoalFinal"  // 勝利条件
                 ]
             };
@@ -691,23 +690,27 @@
         // CPU思考ロジック
         function cpuTurn(gameState) {
             const cpu = gameState.players.p2;
-            let playedCard = false;
+            console.log('CPU思考開始 AP:', cpu.ap, '手札:', cpu.hand.length);
             
             // 1. 勝利カードがあり、スコアが足りていれば使う
             for (let i = 0; i < cpu.hand.length; i++) {
                 const card = cpu.hand[i];
                 if ((card.id === 'Goal30' && cpu.score >= 30) || (card.id === 'GoalFinal' && cpu.score >= 10)) {
                     if (cpu.ap >= card.cost) {
+                        console.log('CPU勝利カードをプレイ:', card.name);
                         socket.emit('play_card', {player_id: 'p2', card_index: i});
                         return;
                     }
                 }
             }
             
-            // 2. APがある限り、コストが低い順にカードをプレイ
-            cpu.hand.sort((a, b) => a.cost - b.cost);
-            for (let i = 0; i < cpu.hand.length; i++) {
-                const card = cpu.hand[i];
+            // 2. APがある限り、コストが低い順にカードをプレイ（元の配列を変更しない）
+            const sortedIndices = cpu.hand.map((c, idx) => ({card: c, index: idx}))
+                                           .sort((a, b) => a.card.cost - b.card.cost);
+            
+            for (let item of sortedIndices) {
+                const card = item.card;
+                const i = item.index;
                 
                 // スペルカードは豪雨時スキップ
                 if (gameState.weather === '豪雨' && card.type === 'SPELL') continue;
@@ -721,26 +724,23 @@
                 if (evoMap[card.id]) {
                     const hasBase = cpu.field.some(c => c.id === evoMap[card.id]);
                     if (hasBase && cpu.ap >= 1) {
+                        console.log('CPU進化カードをプレイ:', card.name, 'index:', i);
                         socket.emit('play_card', {player_id: 'p2', card_index: i});
-                        playedCard = true;
-                        setTimeout(() => { cpuTurn(gameState); }, 1500);
                         return;
                     }
                 }
                 
                 // 通常プレイ
                 if (cpu.ap >= card.cost) {
+                    console.log('CPUカードをプレイ:', card.name, 'cost:', card.cost, 'index:', i);
                     socket.emit('play_card', {player_id: 'p2', card_index: i});
-                    playedCard = true;
-                    setTimeout(() => { cpuTurn(gameState); }, 1500);
                     return;
                 }
             }
             
             // 3. もうプレイできないのでターン終了
-            if (!playedCard) {
-                setTimeout(() => { socket.emit('end_turn', {player_id: 'p2'}); }, 1000);
-            }
+            console.log('CPUターン終了を送信');
+            setTimeout(() => { socket.emit('end_turn', {player_id: 'p2'}); }, 1000);
         }
         
         function selectTarget(idx) {
@@ -780,13 +780,13 @@
                 txt.innerHTML = `Day ${s.turn_count} <br> PLAYER ${s.turn === 'p1' ? '1' : '2'} <br> <div style="font-size:40px; margin-top:10px;">${s.weather}</div>`;
                 ov.style.display = 'flex';
                 setTimeout(() => { ov.style.display = 'none'; }, 2000);
-                
-                // CPU戦モード：CPUのターンなら自動プレイ
-                if (isCPUMode && s.turn === 'p2') {
-                    setTimeout(() => { cpuTurn(s); }, 2500);
-                }
             }
             lastTurn = s.turn;
+            
+            // CPU戦モード：CPUのターンなら常に自動プレイ（ターン変更時だけでなく、カードプレイ後も）
+            if (isCPUMode && s.turn === 'p2' && !s.pending_selection && !s.winner) {
+                setTimeout(() => { cpuTurn(s); }, 1500);
+            }
 
             document.getElementById('my-score').innerText = me.score;
             document.getElementById('my-ap').innerText = `${me.ap}/${me.max_ap}`;
@@ -836,8 +836,18 @@
                 render(c, i, false, oppFieldSelectable && selectTargets.includes(i))
             ).join('');
             
-            // ログの表示エリアを少し見やすく
-            document.getElementById('log').innerHTML = s.log.slice(-12).map(l => `<div>> ${l}</div>`).join('');
+            // ログの表示エリアを少し見やすく（カード名があればMASTER_CARDSから詳細を取得）
+            document.getElementById('log').innerHTML = s.log.slice(-12).map(l => {
+                // カード名を検出して効果を追加
+                let enhanced = l;
+                MASTER_CARDS.forEach(card => {
+                    const regex = new RegExp(`「${card.name}」`, 'g');
+                    if (regex.test(l)) {
+                        enhanced = enhanced.replace(regex, `「${card.name}(${card.desc})」`);
+                    }
+                });
+                return `<div>> ${enhanced}</div>`;
+            }).join('');
 
             if(s.winner) {
                 const modal = document.getElementById('result-modal');
