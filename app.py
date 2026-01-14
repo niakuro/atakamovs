@@ -272,11 +272,14 @@ def handle_play(data):
                 game.next_weather = "晴天"
                 game.log.append(f"{pid.upper()}: 次ターンは晴天!")
             elif card["id"] == "Training":
-                if p["field"]:
+                # 社員カードのみを対象とする
+                employee_ids = ["Newbie", "Staff", "Chief", "Senior", "Ace", "Leader", "Expert", "Clerk", "Intern", "SafetyOfficer"]
+                employee_targets = [i for i, c in enumerate(p["field"]) if c["id"] in employee_ids]
+                if employee_targets:
                     game.pending_selection = {
                         "type": "buff_ally",
                         "player": pid,
-                        "targets": list(range(len(p["field"]))),
+                        "targets": employee_targets,
                         "card_id": "Training"
                     }
                     game.log.append(f"{pid.upper()}: 強化する社員を選んでください")
@@ -340,6 +343,9 @@ def handle_play(data):
             if not is_evolution:
                 game.log.append(f"{pid.upper()}: {card['name']}")
         
+        # スコア再計算してから勝利条件判定
+        recalc_scores()
+        
         # 勝利条件判定
         if card["id"] == "GoalFinal" and p["score"] >= 10: 
             game.winner = pid
@@ -347,7 +353,6 @@ def handle_play(data):
         if card["id"] == "Goal30" and p["score"] >= 30: 
             game.winner = pid
             game.log.append(f"{pid.upper()}: 工期完遂で勝利!")
-        recalc_scores()
     emit('update_ui', vars(game), broadcast=True)
 
 def recalc_scores():
