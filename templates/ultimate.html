@@ -384,8 +384,13 @@
         // CPU戦開始
         function startCPUGame() {
             isCPUMode = true;
-            socket.emit('create_room');  // CPU用のルームを作成
-            // ルーム作成後、CPU側のデッキも自動生成
+            console.log('CPU戦モード開始:', isCPUMode);
+            document.getElementById('screen-title').style.display = 'none';
+            document.getElementById('screen-deck').style.display = 'block';
+            renderDeckGrid();
+            
+            // ルームを作成（バックグラウンドで）
+            socket.emit('create_room');
         }
         // ルーム作成
         function createRoom() {
@@ -406,13 +411,10 @@
         socket.on('room_created', (data) => {
             currentRoomId = data.room_id;
             myId = data.player_id;  // P1として自動割り当て
+            console.log('ルーム作成:', currentRoomId, 'CPU戦モード:', isCPUMode);
             
-            if (isCPUMode) {
-                // CPU戦モード：即座にデッキ編成画面へ
-                document.getElementById('screen-title').style.display = 'none';
-                document.getElementById('screen-deck').style.display = 'block';
-                renderDeckGrid();
-            } else {
+            // CPU戦モードの場合は何もしない（既にデッキ編成画面に行っている）
+            if (!isCPUMode) {
                 // 通常モード：待機画面へ
                 document.getElementById('screen-title').style.display = 'none';
                 document.getElementById('screen-waiting').style.display = 'flex';
