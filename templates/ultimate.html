@@ -5,16 +5,84 @@
     <title>観測君VS ULTIMATE Ver 3.1</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
-        :root { --gold: #ffdf00; --blue: #3498db; --red: #e74c3c; --dark: #1a1a1a; }
+        :root { 
+            --gold: #ffdf00; 
+            --blue: #3498db; 
+            --red: #e74c3c; 
+            --purple: #9b59b6;
+            --green: #2ecc71;
+            --orange: #e67e22;
+            --cyan: #1abc9c;
+            --dark: #1a1a1a; 
+        }
         body { margin: 0; color: white; font-family: 'Helvetica', sans-serif; background: #000; overflow: hidden; }
-        .master-bg { position: fixed; inset: 0; z-index: -10; background: radial-gradient(#333, #000); }
         
-        /* カード基本スタイル */
-        .card { width: 95px; height: 145px; background: #fff; border-radius: 8px; color: #222; padding: 6px; position: relative; cursor: pointer; font-size: 10px; border: 1px solid #999; box-sizing: border-box; transition: 0.2s; }
-        .card:hover { transform: translateY(-5px); border-color: var(--gold); box-shadow: 0 5px 15px rgba(255,223,0,0.3); }
-        .card.MACHINE { border-top: 6px solid var(--blue); }
-        .card.SPELL { border-top: 6px solid var(--red); }
-        .card.GOAL { border: 3px solid var(--gold); background: #fff9c4; }
+        /* 実写背景 */
+        .master-bg { 
+            position: fixed; inset: 0; z-index: -10; 
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: opacity 1s ease;
+        }
+        
+        /* 背景のオーバーレイ（見やすくするため） */
+        .master-bg::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(1px);
+        }
+        
+        /* ほこりや光の粒子エフェクト */
+        .master-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(255, 255, 200, 0.15) 0%, transparent 30%),
+                radial-gradient(circle at 80% 20%, rgba(255, 255, 200, 0.1) 0%, transparent 25%),
+                radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.08) 0%, transparent 20%);
+            animation: dustFloat 25s ease infinite;
+            z-index: 1;
+        }
+        
+        @keyframes dustFloat {
+            0%, 100% { transform: translate(0, 0); opacity: 0.6; }
+            25% { transform: translate(15px, -15px); opacity: 0.8; }
+            50% { transform: translate(-10px, 15px); opacity: 0.5; }
+            75% { transform: translate(20px, 10px); opacity: 0.7; }
+        }
+        
+        /* カード基本スタイル - よりカラフルに */
+        .card { 
+            width: 95px; height: 145px; 
+            background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
+            border-radius: 8px; color: #222; padding: 6px; 
+            position: relative; cursor: pointer; font-size: 10px; 
+            border: 2px solid #999; box-sizing: border-box; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .card:hover { 
+            transform: translateY(-8px) scale(1.05); 
+            border-color: var(--gold); 
+            box-shadow: 0 10px 30px rgba(255,223,0,0.4), 0 0 20px rgba(255,223,0,0.2);
+        }
+        .card.MACHINE { 
+            border-top: 6px solid var(--blue); 
+            background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%);
+        }
+        .card.SPELL { 
+            border-top: 6px solid var(--red); 
+            background: linear-gradient(135deg, #ffffff 0%, #ffebee 100%);
+        }
+        .card.GOAL { 
+            border: 3px solid var(--gold); 
+            background: linear-gradient(135deg, #fff9c4 0%, #ffeb3b 100%);
+            box-shadow: 0 0 20px rgba(255, 223, 0, 0.5);
+        }
         
         /* カード内ステータス */
         .cost { position: absolute; top: -8px; left: -8px; background: var(--gold); border-radius: 50%; width: 24px; height: 24px; text-align: center; font-weight: bold; border: 1.5px solid #000; line-height: 24px; z-index: 2; color: #000; }
@@ -30,44 +98,145 @@
 
         /* レイアウト */
         #screen-battle { display: none; grid-template-columns: 1fr 300px; height: 100vh; }
-        .sidebar { background: rgba(0,0,0,0.85); border-left: 2px solid #444; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .field { display: flex; justify-content: center; gap: 10px; min-height: 170px; border-bottom: 1px dashed #444; align-items: center; }
-        .log { flex-grow: 1; overflow-y: auto; background: #050505; padding: 10px; font-size: 11px; color: #0f0; border: 1px solid #333; font-family: monospace; }
+        .sidebar { 
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(22, 33, 62, 0.95));
+            border-left: 3px solid var(--cyan); 
+            padding: 20px; display: flex; flex-direction: column; gap: 10px;
+            box-shadow: -5px 0 20px rgba(26, 188, 156, 0.3);
+        }
+        .field { 
+            display: flex; justify-content: center; gap: 10px; 
+            min-height: 170px; 
+            border-bottom: 2px solid rgba(52, 152, 219, 0.5); 
+            align-items: center;
+            background: linear-gradient(90deg, 
+                rgba(52, 152, 219, 0.05) 0%, 
+                rgba(155, 89, 182, 0.05) 50%, 
+                rgba(52, 152, 219, 0.05) 100%
+            );
+            padding: 10px 0;
+        }
+        .log { 
+            flex-grow: 1; overflow-y: auto; 
+            background: linear-gradient(135deg, #0a0a0a, #1a1a2e);
+            padding: 10px; font-size: 11px; 
+            color: #0ff; 
+            border: 2px solid var(--cyan); 
+            font-family: monospace;
+            box-shadow: inset 0 0 20px rgba(26, 188, 156, 0.2);
+        }
 
         /* タイトル・ルール */
-        #rules-box { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 13px; line-height: 1.6; max-width: 600px; }
-        .rule-tag { color: var(--gold); font-weight: bold; margin-right: 5px; }
+        #rules-box { 
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.15), rgba(155, 89, 182, 0.15));
+            padding: 15px; border-radius: 12px; margin-top: 20px; 
+            font-size: 13px; line-height: 1.6; max-width: 600px;
+            border: 2px solid rgba(52, 152, 219, 0.3);
+            box-shadow: 0 5px 20px rgba(52, 152, 219, 0.2);
+        }
+        .rule-tag { 
+            color: var(--cyan); 
+            font-weight: bold; 
+            margin-right: 5px;
+            text-shadow: 0 0 10px rgba(26, 188, 156, 0.5);
+        }
 
-        /* ボタン */
-        .btn { padding: 12px 24px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-gold { background: var(--gold); color: #000; }
-        .btn-gold:hover { filter: brightness(1.2); }
+        /* ボタン - よりカラフルに */
+        .btn { 
+            padding: 12px 24px; border: none; border-radius: 8px; 
+            font-weight: bold; cursor: pointer; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        .btn-gold { 
+            background: linear-gradient(135deg, var(--gold) 0%, #ffa500 100%);
+            color: #000;
+            box-shadow: 0 4px 15px rgba(255, 223, 0, 0.4);
+        }
+        .btn-gold:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(255, 223, 0, 0.6);
+        }
 
         /* ターン演出オーバーレイ */
         #turn-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center;
+            background: radial-gradient(circle, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.95) 100%);
+            display: none; justify-content: center; align-items: center;
             z-index: 1000; pointer-events: none;
         }
         #turn-overlay-text {
-            font-size: 80px; font-weight: 900; color: var(--gold);
-            text-shadow: 0 0 30px #000; text-align: center;
-            border: 5px solid var(--gold); padding: 20px 60px; background: #222;
+            font-size: 80px; font-weight: 900; 
+            background: linear-gradient(135deg, var(--gold), var(--orange), var(--gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            border: 5px solid var(--gold); 
+            padding: 20px 60px; 
+            background-color: rgba(34, 34, 34, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(255, 223, 0, 0.6), inset 0 0 40px rgba(255, 223, 0, 0.2);
+            animation: turnPulse 0.5s ease-in-out;
+        }
+        
+        @keyframes turnPulse {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         /* リザルト画面 */
         #result-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center;
+            background: radial-gradient(circle, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.98) 100%);
+            display: none; flex-direction: column; justify-content: center; align-items: center;
             z-index: 2000;
         }
-        #result-title { font-size: 60px; font-weight: bold; margin-bottom: 30px; }
+        #result-title { 
+            font-size: 60px; font-weight: bold; margin-bottom: 30px;
+            text-shadow: 0 0 30px currentColor;
+            animation: resultGlow 2s ease-in-out infinite;
+        }
+        
+        @keyframes resultGlow {
+            0%, 100% { text-shadow: 0 0 20px currentColor; }
+            50% { text-shadow: 0 0 40px currentColor, 0 0 60px currentColor; }
+        }
         
         /* 選択モード */
-        .card-selectable { border: 3px solid var(--gold) !important; animation: pulse 1s infinite; }
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 10px var(--gold); }
-            50% { box-shadow: 0 0 25px var(--gold); }
+        .card-selectable { 
+            border: 3px solid var(--gold) !important; 
+            animation: pulseSelect 1s infinite;
+            box-shadow: 0 0 30px rgba(255, 223, 0, 0.6) !important;
+        }
+        @keyframes pulseSelect {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(255, 223, 0, 0.6);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 40px rgba(255, 223, 0, 0.9);
+                transform: scale(1.05);
+            }
         }
     </style>
 </head>
@@ -138,6 +307,20 @@
         const socket = io();
         let myId, myDeck = [];
         let lastTurn = null;
+
+        // Pixabay APIで現場風の実写背景を取得（無料、APIキー不要）
+        const bgUrls = [
+            'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1920&h=1080&fit=crop', // 工事現場
+            'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&h=1080&fit=crop', // 山道
+            'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=1920&h=1080&fit=crop'  // 都市道路
+        ];
+        const randomUrl = bgUrls[Math.floor(Math.random() * bgUrls.length)];
+        
+        // 背景画像を設定
+        const bgElement = document.querySelector('.master-bg');
+        bgElement.style.backgroundImage = `url('${randomUrl}')`;
+        bgElement.style.opacity = '1';
+        console.log(`現場背景読込: ${randomUrl}`);
 
         // クライアント側マスターデータの修正（サーバー側と文言を合わせる）
         const MASTER_CARDS = [
