@@ -95,6 +95,23 @@
 
         /* デッキ枚数バッジ */
         .deck-badge { position: absolute; top: 0px; right: 0px; background: #000; color: #fff; padding: 2px 6px; border-radius: 0 8px 0 8px; font-weight: bold; font-size: 12px; border: 1px solid var(--gold); z-index: 5; }
+        
+        /* デッキに入れたカードを光らせる */
+        .card.in-deck {
+            border: 2px solid var(--gold);
+            box-shadow: 0 0 20px rgba(241, 196, 15, 0.6), 0 0 40px rgba(241, 196, 15, 0.3);
+            animation: deckGlow 2s ease-in-out infinite;
+            transform: translateY(-2px);
+        }
+        
+        @keyframes deckGlow {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(241, 196, 15, 0.6), 0 0 40px rgba(241, 196, 15, 0.3);
+            }
+            50% { 
+                box-shadow: 0 0 30px rgba(241, 196, 15, 0.8), 0 0 60px rgba(241, 196, 15, 0.5);
+            }
+        }
 
         /* レイアウト */
         #screen-battle { display: none; grid-template-columns: 1fr 300px; height: 100vh; }
@@ -250,6 +267,11 @@
                 transform: scale(1.05);
             }
         }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -264,7 +286,7 @@
 
     <div id="screen-title" style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
         <h1 style="color:var(--gold); font-size:64px; text-shadow: 0 0 20px var(--gold); margin:0;">観測君VS ULTIMATE</h1>
-        <p style="color:#888; letter-spacing: 5px;">VER 3.0 FINAL EDITION</p>
+        <p style="color:#888; letter-spacing: 5px;">VER 4.1</p>
         
         <div id="rules-box">
             <h3 style="margin-top:0;">現場監督の心得（ルール説明）</h3>
@@ -281,9 +303,31 @@
             </div>
         </div>
 
-        <div style="display:flex; gap:20px; margin-top:30px;">
-            <button onclick="init('p1')" class="btn" style="background:var(--blue); color:#fff; font-size:18px;">P1: 工事部長 で開始</button>
-            <button onclick="init('p2')" class="btn" style="background:var(--red); color:#fff; font-size:18px;">P2: 測量主任 で開始</button>
+        <div id="room-section" style="margin-top:40px; background:rgba(20, 30, 48, 0.9); padding:25px; border-radius:15px; max-width:500px; border:2px solid rgba(241, 196, 15, 0.4);">
+            <h3 style="color:var(--gold); margin-top:0;">ルーム選択</h3>
+            <div style="display:flex; gap:15px; margin-bottom:20px;">
+                <button onclick="createRoom()" class="btn" style="background:var(--green); color:#fff; font-size:18px; flex:1;">ルームを作成</button>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <input id="room-input" type="text" placeholder="4桁のルーム番号" maxlength="4" style="flex:1; padding:12px; font-size:16px; border-radius:8px; border:2px solid #444; background:#222; color:#fff; text-align:center;">
+                <button onclick="joinRoomByInput()" class="btn" style="background:var(--cyan); color:#fff; font-size:18px;">参加</button>
+            </div>
+            <div id="room-status" style="margin-top:15px; text-align:center; color:var(--gold); font-size:14px; min-height:24px;"></div>
+        </div>
+    </div>
+
+    <div id="screen-waiting" style="display:none; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+        <h1 style="color:var(--gold); font-size:48px; text-shadow: 0 0 20px var(--gold); margin:0;">参加者待機中...</h1>
+        <div style="margin-top:30px; background:rgba(20, 30, 48, 0.9); padding:30px; border-radius:15px; border:2px solid rgba(241, 196, 15, 0.4);">
+            <p style="font-size:24px; color:#fff;">ルーム番号</p>
+            <p id="waiting-room-number" style="font-size:64px; color:var(--gold); font-weight:bold; letter-spacing:10px; margin:20px 0;">----</p>
+            <p style="font-size:18px; color:#aaa;">この番号を相手に伝えてください</p>
+            <div style="margin-top:30px; padding:20px; background:rgba(52, 152, 219, 0.1); border-radius:10px; border:1px solid rgba(52, 152, 219, 0.3);">
+                <p style="color:var(--cyan); font-size:16px; margin:5px 0;">あなたは <span style="font-weight:bold; font-size:20px;">P1: 工事部長</span> です</p>
+            </div>
+        </div>
+        <div class="loading-spinner" style="margin-top:40px;">
+            <div style="width:60px; height:60px; border:6px solid rgba(241, 196, 15, 0.2); border-top:6px solid var(--gold); border-radius:50%; animation:spin 1s linear infinite;"></div>
         </div>
     </div>
 
@@ -292,7 +336,8 @@
             <h2 style="color:var(--gold); margin:0;">デッキ編成 (<span id="deck-count">0</span>/40)</h2>
             <div style="display:flex; gap:15px;">
                 <button onclick="loadDeck('TRAINING')" class="btn" style="background:#333; color:#fff;">社員育成デッキ</button>
-                <button onclick="loadDeck('LUXURY')" class="btn" style="background:#333; color:#fff;">高級機材デッキ</button>
+                <button onclick="loadDeck('SURVEY')" class="btn" style="background:#333; color:#fff;">測量機械デッキ</button>
+                <button onclick="loadDeck('CONSTRUCTION')" class="btn" style="background:#333; color:#fff;">重機土木デッキ</button>
                 <button onclick="submitDeck()" class="btn btn-gold">現場へ出撃！</button>
             </div>
         </div>
@@ -307,6 +352,7 @@
             <div id="my-hand" style="display:flex; justify-content:center; gap:8px; padding:20px; background:rgba(0,0,0,0.6); min-height:170px;"></div>
         </div>
         <div class="sidebar">
+            <div id="room-display" style="font-size:14px; color:var(--gold); margin-bottom:10px; text-align:center; background:rgba(20, 30, 48, 0.8); padding:8px; border-radius:8px; border:1px solid rgba(241, 196, 15, 0.3);">ルーム: <span id="current-room">----</span></div>
             <div style="font-size:18px; color:#aaa;">Day <span id="turn-txt" style="color:#fff;">1</span> / 天候: <span id="weather-txt" style="color:var(--gold);">晴天</span></div>
             <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #444; text-align:center;">
                 <div style="font-size:12px; color:#888;">現在の計測スコア</div>
@@ -324,6 +370,51 @@
         const socket = io();
         let myId, myDeck = [];
         let lastTurn = null;
+        let currentRoomId = null;
+
+        // ルーム作成
+        function createRoom() {
+            socket.emit('create_room');
+        }
+
+        // ルーム参加（入力から）
+        function joinRoomByInput() {
+            const roomId = document.getElementById('room-input').value.trim();
+            if (roomId.length !== 4) {
+                document.getElementById('room-status').textContent = '4桁のルーム番号を入力してください';
+                return;
+            }
+            socket.emit('join_room', { room_id: roomId });
+        }
+
+        // ルーム作成成功
+        socket.on('room_created', (data) => {
+            currentRoomId = data.room_id;
+            myId = data.player_id;  // P1として自動割り当て
+            document.getElementById('screen-title').style.display = 'none';
+            document.getElementById('screen-waiting').style.display = 'flex';
+            document.getElementById('waiting-room-number').textContent = currentRoomId;
+        });
+
+        // ルーム参加成功
+        socket.on('room_joined', (data) => {
+            currentRoomId = data.room_id;
+            myId = data.player_id;  // P2として自動割り当て
+            // P2は待機せず直接デッキ編成へ（room_readyで遷移）
+        });
+
+        // 2人揃った通知
+        socket.on('room_ready', (data) => {
+            document.getElementById('screen-title').style.display = 'none';
+            document.getElementById('screen-waiting').style.display = 'none';
+            document.getElementById('screen-deck').style.display = 'block';
+            renderDeckGrid();
+        });
+
+        // エラー処理
+        socket.on('error', (data) => {
+            document.getElementById('room-status').textContent = data.message;
+        });
 
         // Pixabay APIで現場風の実写背景を取得（無料、APIキー不要）
         const bgUrls = [
@@ -405,6 +496,31 @@
             renderDeckGrid();
         }
 
+        function addCard(cardId, event) {
+            if (event) event.stopPropagation();
+            const count = myDeck.filter(id => id === cardId).length;
+            if (count >= 4) {
+                return; // 4枚制限
+            }
+            if (myDeck.length >= 40) {
+                alert("デッキは最大40枚です！");
+                return;
+            }
+            myDeck.push(cardId);
+            document.getElementById('deck-count').innerText = myDeck.length;
+            renderDeckGrid();
+        }
+
+        function removeCard(cardId, event) {
+            if (event) event.stopPropagation();
+            const idx = myDeck.indexOf(cardId);
+            if (idx !== -1) {
+                myDeck.splice(idx, 1);
+                document.getElementById('deck-count').innerText = myDeck.length;
+                renderDeckGrid();
+            }
+        }
+
         function renderDeckGrid() {
             const grid = document.getElementById('deck-grid');
             grid.innerHTML = "";
@@ -412,27 +528,30 @@
                 const currentCount = myDeck.filter(id => id === c.id).length;
                 const d = document.createElement('div');
                 d.className = `card ${c.type}`;
+                
+                // デッキに入っているカードは光らせる
+                if (currentCount > 0) {
+                    d.classList.add('in-deck');
+                }
+                
+                d.style.position = 'relative';
                 d.innerHTML = `
                     <div class="cost">${c.cost}</div>
                     <b>${c.name}</b><br><small>${c.desc}</small>
                     <div class="upkeep">維持:${c.upkeep}</div>
                     <div class="power">${c.power || ''}</div>
                     <div class="deck-badge">${currentCount}</div>
+                    <div style="position:absolute; bottom:5px; left:0; right:0; display:flex; gap:5px; justify-content:center;">
+                        <button onclick="removeCard('${c.id}', event)" class="deck-btn" style="background:#e74c3c; width:35px; height:30px; border:none; border-radius:5px; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">−</button>
+                        <button onclick="addCard('${c.id}', event)" class="deck-btn" style="background:#27ae60; width:35px; height:30px; border:none; border-radius:5px; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">＋</button>
+                    </div>
                 `;
                 
-                d.onclick = () => {
-                    const count = myDeck.filter(id => id === c.id).length;
-                    if (count < 4) {
-                        if (myDeck.length < 40) {
-                            myDeck.push(c.id);
-                        } else {
-                            alert("デッキは最大40枚です！");
-                        }
-                    } else {
-                        myDeck = myDeck.filter(id => id !== c.id);
+                // カード全体クリックで追加（従来の機能も維持）
+                d.onclick = (e) => {
+                    if (!e.target.classList.contains('deck-btn') && e.target.tagName !== 'BUTTON') {
+                        addCard(c.id);
                     }
-                    document.getElementById('deck-count').innerText = myDeck.length;
-                    renderDeckGrid();
                 };
                 grid.appendChild(d);
             });
@@ -440,8 +559,65 @@
 
         function loadDeck(mode) {
             const presets = {
-                TRAINING: ["Newbie","Newbie","Newbie","Newbie","Staff","Staff","Staff","Staff","Chief","Chief","Chief","Chief","Elite","Elite","Fund","Fund","Note","Note","Repair","Repair","LevelBasic","LevelBasic","LevelAuto","LevelAuto","Clerk","Clerk","GoalFinal","GoalFinal","Goal30","Goal30","Consult","Consult","Training","Training","Senior","Senior","Check","Check","Note","Note"],
-                LUXURY: ["Excavator","Excavator","Excavator","Rental","Rental","GNSS","GNSS","GNSS","Drone","Drone","Drone","GenSet","GenSet","Radio","Radio","Rush","Rush","Repair","Repair","SmallTruck","SmallTruck","Goal30","Goal30","TS","TS","Decision","Decision","Scanner","Concrete","Concrete","Pump","Note","Note","NightWork","Overtime","Overtime","GoalFinal","UsedTS","UsedTS","UsedTS"]
+                // 社員育成デッキ：社員カードとTraining（研修）で強化していく戦略
+                TRAINING: [
+                    "Newbie","Newbie","Newbie","Newbie",  // 新入社員を大量投入
+                    "Staff","Staff","Staff",  // 進化先
+                    "Chief","Chief",  // 最終進化
+                    "Senior","Senior","Senior",  // 新入社員を強化
+                    "Ace","Ace",  // 現場のエース
+                    "Expert","Expert",  // ベテラン職人
+                    "Clerk","Clerk","Clerk",  // 事務員でAP回復
+                    "SafetyOfficer","SafetyOfficer",  // 安全管理
+                    "Training","Training","Training",  // 研修で社員強化
+                    "Elite","Elite",  // 少数精鋭
+                    "Note","Note","Check",  // ドロー
+                    "Repair","Repair","Overtime",  // AP管理
+                    "Decision","Fund",  // 最大AP増加
+                    "Helmet","Helmet",  // 安全装備
+                    "Lost","Bush",  // 除去
+                    "Goal30","Goal30","GoalFinal"  // 勝利条件
+                ],
+                
+                // 測量機械デッキ：測量機器の進化ラインを活かす正統派
+                SURVEY: [
+                    "LevelBasic","LevelBasic","LevelBasic",  // レベル基本
+                    "LevelAuto","LevelAuto","LevelAuto",  // オートレベル進化
+                    "StaffBasic","StaffBasic","StaffBasic",  // スタッフ基本
+                    "StaffRef","StaffRef","StaffRef",  // 反射スタッフ進化
+                    "TS","TS","TS","TS",  // 光波トータルステーション
+                    "Drone","Drone","Drone",  // ドローン（霧に強い）
+                    "Laser","Laser",  // レーザー墨出し
+                    "Compass","Tripod","Tripod",  // 補助機材
+                    "GenSet","GenSet",  // 発電機で全体強化
+                    "SmallTruck","SmallTruck",  // 軽トラで設置サポート
+                    "Note","Note","Check","Check",  // ドロー
+                    "Repair","Repair","Overtime",  // AP管理
+                    "Consult","Consult",  // 天候操作
+                    "Lost","Boundary",  // 除去・凍結
+                    "Goal30","Goal30","GoalFinal"  // 勝利条件
+                ],
+                
+                // 重機土木デッキ：大型重機とパワーで圧倒する
+                CONSTRUCTION: [
+                    "Excavator","Excavator","Excavator",  // バックホー
+                    "Rental","Rental","Rental",  // レンタル重機
+                    "Concrete","Concrete","Concrete",  // 生コン車
+                    "Pump","Pump",  // 排水ポンプ（雨対策）
+                    "GNSS","GNSS",  // GNSS衛星
+                    "Scanner","Scanner",  // 3Dスキャナ
+                    "UsedTS","UsedTS",  // 中古TS
+                    "GenSet","GenSet",  // 発電機
+                    "Lights","Lights",  // 投光器
+                    "Intern","Intern","Intern",  // 実習生（囮）
+                    "Clerk","Clerk",  // 事務員（AP回復）
+                    "Rush","Rush",  // 突貫工事
+                    "Note","Note","Elite",  // ドロー
+                    "NightWork","Repair","Repair","Overtime","Overtime",  // AP大量管理
+                    "Decision","Decision",  // 最大AP増加
+                    "Lost","Safety",  // 除去・妨害
+                    "Goal30","Goal30","GoalFinal"  // 勝利条件
+                ]
             };
             myDeck = [...presets[mode]];
             document.getElementById('deck-count').innerText = myDeck.length;
@@ -465,6 +641,11 @@
         }
 
         socket.on('update_ui', s => {
+            // ルーム番号を表示
+            if (currentRoomId) {
+                document.getElementById('current-room').textContent = currentRoomId;
+            }
+            
             const me = s.players[myId], opp = s.players[myId==='p1'?'p2':'p1'];
             const ind = document.getElementById('turn-indicator');
             

@@ -8,12 +8,17 @@ Original file is located at
 """
 
 import random
-from flask import Flask, render_template
-from flask_socketio import SocketIO, emit
+from flask import Flask, render_template, request
+from flask_socketio import SocketIO, emit, join_room, leave_room
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'kanzoku-kun-v3.1-ultimate'
 socketio = SocketIO(app)
+
+# ルーム管理用の辞書
+rooms = {}  # {room_id: GameInstance}
+player_rooms = {}  # {sid: room_id} セッションIDからルームIDへのマッピング
+room_players = {}  # {room_id: {'p1': sid, 'p2': sid}} ルームごとのプレイヤー割り当て
 
 # --- 55種類のカードデータベース ---
 CARD_DB = [
@@ -90,22 +95,72 @@ class GameInstance:
         self.weather = "晴天"
         self.next_weather = None
         self.winner = None
-        self.log = ["観測君VS ULTIMATE Ver 3.1 開始！"]
+        self.log = ["観測吝VS ULTIMATE Ver 4.1 開始！"]
         self.pending_selection = None  # {"type": "...", "player": "...", "targets": [...], "card_played": {...}}
 
-game = GameInstance()
+# グローバルなgameインスタンスは削除（ルーム管理に移行）
+
+def generate_room_id():
+    """4桁のルームIDを生成"""
+    import string
+    while True:
+        room_id = ''.join(random.choices(string.digits, k=4))
+        if room_id not in rooms:
+            return room_id
+
+def get_player_room(sid):
+    """セッションIDからルームIDを取得"""
+    return player_rooms.get(sid)
 
 @app.route('/')
 def index():
     return render_template('ultimate.html')
 
+@socketio.on('create_room')
+def handle_create_room():
+    room_id = generate_room_id()
+    rooms[room_id] = GameInstance()
+    room_players[room_id] = {'p1': request.sid, 'p2': None}
+    player_rooms[request.sid] = room_id
+    join_room(room_id)
+    emit('room_created', {'room_id': room_id, 'player_id': 'p1', 'waiting': True})
+
+@socketio.on('join_room')
+def handle_join_room(data):
+    room_id = data.get('room_id')
+    if room_id not in rooms:
+        emit('error', {'message': 'ルームが存在しません'})
+        return
+    
+    # すでに2人いる場合は拒否
+    if room_players[room_id]['p2'] is not None:
+        emit('error', {'message': 'ルームが満員です'})
+        return
+    
+    # P2として参加
+    room_players[room_id]['p2'] = request.sid
+    player_rooms[request.sid] = room_id
+    join_room(room_id)
+    
+    # 両方のプレイヤーに通知
+    emit('room_joined', {'room_id': room_id, 'player_id': 'p2'})
+    emit('room_ready', {'room_id': room_id}, room=room_id)  # 全員に準備完了を通知
+
 @socketio.on('reset_game')
 def handle_reset():
-    game.reset()
-    emit('update_ui', vars(game), broadcast=True)
+    room_id = get_player_room(request.sid)
+    if not room_id or room_id not in rooms:
+        return
+    rooms[room_id].reset()
+    emit('update_ui', vars(rooms[room_id]), room=room_id)
 
 @socketio.on('submit_deck')
 def handle_deck(data):
+    room_id = get_player_room(request.sid)
+    if not room_id or room_id not in rooms:
+        return
+    game = rooms[room_id]
+    
     pid = data['player_id']
     # カードをコピーしてデッキに追加（frozen属性を初期化）
     game.players[pid]["deck"] = []
@@ -118,10 +173,15 @@ def handle_deck(data):
     if game.players["p1"]["ready"] and game.players["p2"]["ready"]:
         for p in ["p1", "p2"]:
             game.players[p]["hand"] = [game.players[p]["deck"].pop(0) for _ in range(5) if game.players[p]["deck"]]
-    emit('update_ui', vars(game), broadcast=True)
+    emit('update_ui', vars(game), room=room_id)
 
 @socketio.on('select_target')
 def handle_selection(data):
+    room_id = get_player_room(request.sid)
+    if not room_id or room_id not in rooms:
+        return
+    game = rooms[room_id]
+    
     if not game.pending_selection or data['player_id'] != game.pending_selection['player']:
         return
     
@@ -140,7 +200,7 @@ def handle_selection(data):
         target['upkeep'] = 0
         game.log.append(f"{pid.upper()}: {target['name']}を強化!")
         # 勝利判定を再度チェック
-        recalc_scores()
+        recalc_scores(game)
         if p['score'] >= 30:
             # Goal30があれば勝利の可能性
             pass
@@ -173,15 +233,15 @@ def handle_selection(data):
                 'targets': list(range(len(p['field'])))
             }
             game.log.append(f"{pid.upper()}: まだ維持費不足！さらに破棄")
-            recalc_scores()
-            emit('update_ui', vars(game), broadcast=True)
+            recalc_scores(game)
+            emit('update_ui', vars(game), room=room_id)
             return
         # 維持費支払い完了、ドロー続行
         game.pending_selection = None
         if p['deck']: 
             p['hand'].append(p['deck'].pop(0))
-        recalc_scores()
-        emit('update_ui', vars(game), broadcast=True)
+        recalc_scores(game)
+        emit('update_ui', vars(game), room=room_id)
         return
     
     elif sel['type'] == 'sacrifice_for_rush':
@@ -190,18 +250,23 @@ def handle_selection(data):
         game.log.append(f"{pid.upper()}: 突貫工事の反動で{destroyed['name']}が破壊")
         # Rush終了後、ターン終了処理を続行
         game.pending_selection = None
-        recalc_scores()
-        emit('update_ui', vars(game), broadcast=True)
+        recalc_scores(game)
+        emit('update_ui', vars(game), room=room_id)
         # ターンを切り替える
-        end_turn_internal(pid)
+        end_turn_internal(game, pid, room_id)
         return
     
     game.pending_selection = None
-    recalc_scores()
-    emit('update_ui', vars(game), broadcast=True)
+    recalc_scores(game)
+    emit('update_ui', vars(game), room=room_id)
 
 @socketio.on('play_card')
 def handle_play(data):
+    room_id = get_player_room(request.sid)
+    if not room_id or room_id not in rooms:
+        return
+    game = rooms[room_id]
+    
     pid, idx = data['player_id'], data['card_index']
     if pid != game.turn or game.winner: return
     p = game.players[pid]
@@ -210,7 +275,7 @@ def handle_play(data):
     # 豪雨時はスペルカード使用禁止
     if game.weather == "豪雨" and card["type"] == "SPELL":
         game.log.append(f"{pid.upper()}: スペル使用不可！(豪雨)")
-        emit('update_ui', vars(game), broadcast=True)
+        emit('update_ui', vars(game), room=room_id)
         return
 
     play_cost = card["cost"]
@@ -257,14 +322,14 @@ def handle_play(data):
             elif card["id"] == "Repair": 
                 p["ap"] = min(p["max_ap"], p["ap"] + 5)
             elif card["id"] == "Rush": 
-                p["ap"] += 4
+                p["ap"] = min(p["max_ap"], p["ap"] + 4)
                 p["rush_used"] = True
                 game.log.append(f"{pid.upper()}: ターン終了時に1台破壊される")
             elif card["id"] == "Decision": 
                 p["max_ap"] += 2
             elif card["id"] == "Overtime":
                 if p["deck"]: p["hand"].append(p["deck"].pop(0))
-                p["ap"] += 2
+                p["ap"] = min(p["max_ap"], p["ap"] + 2)
             elif card["id"] == "NightWork":
                 p["hand"] = []
                 p["ap"] = p["max_ap"]
@@ -280,7 +345,7 @@ def handle_play(data):
                         "card_id": "Training"
                     }
                     game.log.append(f"{pid.upper()}: 強化する社員を選んでください")
-                    emit('update_ui', vars(game), broadcast=True)
+                    emit('update_ui', vars(game), room=room_id)
                     return
             elif card["id"] == "Safety":
                 opp = game.players["p2" if pid == "p1" else "p1"]
@@ -298,7 +363,7 @@ def handle_play(data):
                         "card_id": "Lost"
                     }
                     game.log.append(f"{pid.upper()}: 紛失させる機材を選んでください")
-                    emit('update_ui', vars(game), broadcast=True)
+                    emit('update_ui', vars(game), room=room_id)
                     return
             elif card["id"] == "Bush":
                 opp = game.players["p2" if pid == "p1" else "p1"]
@@ -312,7 +377,7 @@ def handle_play(data):
                         "card_id": "Bush"
                     }
                     game.log.append(f"{pid.upper()}: 破壊する機材を選んでください")
-                    emit('update_ui', vars(game), broadcast=True)
+                    emit('update_ui', vars(game), room=room_id)
                     return
             elif card["id"] == "Complaint":
                 opp = game.players["p2" if pid == "p1" else "p1"]
@@ -329,7 +394,7 @@ def handle_play(data):
                         "card_id": "Boundary"
                     }
                     game.log.append(f"{pid.upper()}: 停止する機材を選んでください")
-                    emit('update_ui', vars(game), broadcast=True)
+                    emit('update_ui', vars(game), room=room_id)
                     return
             elif card["id"] == "Audit":
                 opp = game.players["p2" if pid == "p1" else "p1"]
@@ -347,10 +412,10 @@ def handle_play(data):
         if card["id"] == "Goal30" and p["score"] >= 30: 
             game.winner = pid
             game.log.append(f"{pid.upper()}: 工期完遂で勝利!")
-        recalc_scores()
-    emit('update_ui', vars(game), broadcast=True)
+        recalc_scores(game)
+    emit('update_ui', vars(game), room=room_id)
 
-def recalc_scores():
+def recalc_scores(game):
     for pid in ["p1", "p2"]:
         p = game.players[pid]
         s = 0
@@ -396,6 +461,11 @@ def recalc_scores():
 
 @socketio.on('end_turn')
 def end_turn(data):
+    room_id = get_player_room(request.sid)
+    if not room_id or room_id not in rooms:
+        return
+    game = rooms[room_id]
+    
     if data['player_id'] != game.turn or game.winner: return
     
     # Rush効果: 自分のターン終了時に場の1台を破壊
@@ -408,12 +478,12 @@ def end_turn(data):
         }
         current_player["rush_used"] = False
         game.log.append(f"{game.turn.upper()}: 突貫工事の反動！破壊するカードを選んでください")
-        emit('update_ui', vars(game), broadcast=True)
+        emit('update_ui', vars(game), room=room_id)
         return
     
-    end_turn_internal(data['player_id'])
+    end_turn_internal(game, data['player_id'], room_id)
 
-def end_turn_internal(player_id):
+def end_turn_internal(game, player_id, room_id):
     """ターン終了の内部処理（選択処理後にも呼ばれる）"""
     game.turn = "p2" if game.turn == "p1" else "p1"
     
@@ -452,15 +522,15 @@ def end_turn_internal(player_id):
             "targets": list(range(len(p["field"])))
         }
         game.log.append(f"{game.turn.upper()}: 維持費不足！破棄するカードを選んでください")
-        emit('update_ui', vars(game), broadcast=True)
+        emit('update_ui', vars(game), room=room_id)
         return
     
     # ドローフェーズ
     if p["deck"]: 
         p["hand"].append(p["deck"].pop(0))
     
-    recalc_scores()
-    emit('update_ui', vars(game), broadcast=True)
+    recalc_scores(game)
+    emit('update_ui', vars(game), room=room_id)
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
