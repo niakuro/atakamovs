@@ -7,9 +7,10 @@ Tests are organized by card type: MACHINE, SPELL, and GOAL cards.
 import unittest
 import sys
 import copy
+import os
 
-# Import game components
-sys.path.insert(0, '/home/runner/work/atakamovs/atakamovs')
+# Import game components using relative path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import app
 from app import GameInstance, CARD_DB, EVOLUTION_MAP
 
@@ -19,6 +20,9 @@ class TestCardEffects(unittest.TestCase):
     
     def setUp(self):
         """Set up a fresh game instance for each test"""
+        # Store original game instance to restore later
+        self._original_game = app.game
+        
         self.game = GameInstance()
         self.game.reset()
         # Set the global game instance for recalc_scores
@@ -30,6 +34,10 @@ class TestCardEffects(unittest.TestCase):
             self.game.players[pid]["field"] = []
             self.game.players[pid]["ap"] = 20  # High AP for testing
             self.game.players[pid]["max_ap"] = 20
+    
+    def tearDown(self):
+        """Restore original game instance after each test"""
+        app.game = self._original_game
     
     def play_card_direct(self, player_id, card_id, cost_override=None):
         """Helper method to play a card directly by ID"""
