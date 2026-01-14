@@ -304,15 +304,24 @@
         </div>
 
         <div id="room-section" style="margin-top:40px; background:rgba(20, 30, 48, 0.9); padding:25px; border-radius:15px; max-width:500px; border:2px solid rgba(241, 196, 15, 0.4);">
-            <h3 style="color:var(--gold); margin-top:0;">ルーム選択</h3>
-            <div style="display:flex; gap:15px; margin-bottom:20px;">
-                <button onclick="createRoom()" class="btn" style="background:var(--green); color:#fff; font-size:18px; flex:1;">ルームを作成</button>
+            <h3 style="color:var(--gold); margin-top:0;">ゲームモード</h3>
+            
+            <!-- CPU戦ボタン -->
+            <div style="margin-bottom:25px;">
+                <button onclick="startCPUGame()" class="btn" style="background:linear-gradient(135deg, #e67e22, #d35400); color:#fff; font-size:20px; width:100%; padding:15px;">🤖 CPU戦（練習モード）</button>
             </div>
-            <div style="display:flex; gap:10px;">
-                <input id="room-input" type="text" placeholder="4桁のルーム番号" maxlength="4" style="flex:1; padding:12px; font-size:16px; border-radius:8px; border:2px solid #444; background:#222; color:#fff; text-align:center;">
-                <button onclick="joinRoomByInput()" class="btn" style="background:var(--cyan); color:#fff; font-size:18px;">参加</button>
+            
+            <div style="border-top:2px solid rgba(241, 196, 15, 0.2); padding-top:20px;">
+                <h4 style="color:var(--cyan); margin-top:0;">オンライン対戦</h4>
+                <div style="display:flex; gap:15px; margin-bottom:20px;">
+                    <button onclick="createRoom()" class="btn" style="background:var(--green); color:#fff; font-size:18px; flex:1;">ルームを作成</button>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <input id="room-input" type="text" placeholder="4桁のルーム番号" maxlength="4" style="flex:1; padding:12px; font-size:16px; border-radius:8px; border:2px solid #444; background:#222; color:#fff; text-align:center;">
+                    <button onclick="joinRoomByInput()" class="btn" style="background:var(--cyan); color:#fff; font-size:18px;">参加</button>
+                </div>
+                <div id="room-status" style="margin-top:15px; text-align:center; color:var(--gold); font-size:14px; min-height:24px;"></div>
             </div>
-            <div id="room-status" style="margin-top:15px; text-align:center; color:var(--gold); font-size:14px; min-height:24px;"></div>
         </div>
     </div>
 
@@ -370,8 +379,14 @@
         const socket = io();
         let myId, myDeck = [];
         let lastTurn = null;
-        let currentRoomId = null;
+        let currentRoomId = null;        let isCPUMode = false;  // CPU戦モード
 
+        // CPU戦開始
+        function startCPUGame() {
+            isCPUMode = true;
+            socket.emit('create_room');  // CPU用のルームを作成
+            // ルーム作成後、CPU側のデッキも自動生成
+        }
         // ルーム作成
         function createRoom() {
             socket.emit('create_room');
@@ -391,9 +406,18 @@
         socket.on('room_created', (data) => {
             currentRoomId = data.room_id;
             myId = data.player_id;  // P1として自動割り当て
-            document.getElementById('screen-title').style.display = 'none';
-            document.getElementById('screen-waiting').style.display = 'flex';
-            document.getElementById('waiting-room-number').textContent = currentRoomId;
+            
+            if (isCPUMode) {
+                // CPU戦モード：即座にデッキ編成画面へ
+                document.getElementById('screen-title').style.display = 'none';
+                document.getElementById('screen-deck').style.display = 'block';
+                renderDeckGrid();
+            } else {
+                // 通常モード：待機画面へ
+                document.getElementById('screen-title').style.display = 'none';
+                document.getElementById('screen-waiting').style.display = 'flex';
+                document.getElementById('waiting-room-number').textContent = currentRoomId;
+            }
         });
 
         // ルーム参加成功
@@ -627,6 +651,32 @@
         function submitDeck() {
             if(myDeck.length < 40) return alert("40枚選んでください！");
             socket.emit('submit_deck', {player_id: myId, deck: myDeck});
+            
+            // CPU戦モード：CPUのデッキも自動提出
+            if (isCPUMode) {
+                // CPUは測量機械デッキを使用
+                const cpuDeck = [
+                    "LevelBasic","LevelBasic","LevelBasic",
+                    "LevelAuto","LevelAuto","LevelAuto",
+                    "StaffBasic","StaffBasic","StaffBasic",
+                    "StaffRef","StaffRef","StaffRef",
+                    "TS","TS","TS","TS",
+                    "Drone","Drone","Drone",
+                    "Laser","Laser",
+                    "Compass","Tripod","Tripod",
+                    "GenSet","GenSet",
+                    "SmallTruck","SmallTruck",
+                    "Note","Note","Check","Check",
+                    "Repair","Repair","Overtime",
+                    "Consult","Consult",
+                    "Lost","Boundary",
+                    "Goal30","Goal30","GoalFinal"
+                ];
+                setTimeout(() => {
+                    socket.emit('submit_deck', {player_id: 'p2', deck: cpuDeck});
+                }, 500);
+            }
+            
             document.getElementById('screen-deck').style.display = 'none';
             document.getElementById('screen-battle').style.display = 'grid';
         }
@@ -636,8 +686,77 @@
             setTimeout(() => { location.reload(); }, 100);
         }
         
+        // CPU思考ロジック
+        function cpuTurn(gameState) {
+            const cpu = gameState.players.p2;
+            let playedCard = false;
+            
+            // 1. 勝利カードがあり、スコアが足りていれば使う
+            for (let i = 0; i < cpu.hand.length; i++) {
+                const card = cpu.hand[i];
+                if ((card.id === 'Goal30' && cpu.score >= 30) || (card.id === 'GoalFinal' && cpu.score >= 10)) {
+                    if (cpu.ap >= card.cost) {
+                        socket.emit('play_card', {player_id: 'p2', card_index: i});
+                        return;
+                    }
+                }
+            }
+            
+            // 2. APがある限り、コストが低い順にカードをプレイ
+            cpu.hand.sort((a, b) => a.cost - b.cost);
+            for (let i = 0; i < cpu.hand.length; i++) {
+                const card = cpu.hand[i];
+                
+                // スペルカードは豪雨時スキップ
+                if (gameState.weather === '豪雨' && card.type === 'SPELL') continue;
+                
+                // 進化カードの処理
+                const evoMap = {
+                    'Staff': 'Newbie', 'Chief': 'Staff',
+                    'LevelAuto': 'LevelBasic', 'StaffRef': 'StaffBasic'
+                };
+                
+                if (evoMap[card.id]) {
+                    const hasBase = cpu.field.some(c => c.id === evoMap[card.id]);
+                    if (hasBase && cpu.ap >= 1) {
+                        socket.emit('play_card', {player_id: 'p2', card_index: i});
+                        playedCard = true;
+                        setTimeout(() => { cpuTurn(gameState); }, 1500);
+                        return;
+                    }
+                }
+                
+                // 通常プレイ
+                if (cpu.ap >= card.cost) {
+                    socket.emit('play_card', {player_id: 'p2', card_index: i});
+                    playedCard = true;
+                    setTimeout(() => { cpuTurn(gameState); }, 1500);
+                    return;
+                }
+            }
+            
+            // 3. もうプレイできないのでターン終了
+            if (!playedCard) {
+                setTimeout(() => { socket.emit('end_turn', {player_id: 'p2'}); }, 1000);
+            }
+        }
+        
         function selectTarget(idx) {
             socket.emit('select_target', {player_id: myId, target_index: idx});
+        }
+        
+        // CPU用の選択処理
+        function cpuSelectTarget(gameState) {
+            if (!gameState.pending_selection || gameState.pending_selection.player !== 'p2') return;
+            
+            const targets = gameState.pending_selection.targets;
+            if (targets.length > 0) {
+                // ランダムに選択
+                const randomTarget = targets[Math.floor(Math.random() * targets.length)];
+                setTimeout(() => {
+                    socket.emit('select_target', {player_id: 'p2', target_index: randomTarget});
+                }, 1000);
+            }
         }
 
         socket.on('update_ui', s => {
@@ -659,6 +778,11 @@
                 txt.innerHTML = `Day ${s.turn_count} <br> PLAYER ${s.turn === 'p1' ? '1' : '2'} <br> <div style="font-size:40px; margin-top:10px;">${s.weather}</div>`;
                 ov.style.display = 'flex';
                 setTimeout(() => { ov.style.display = 'none'; }, 2000);
+                
+                // CPU戦モード：CPUのターンなら自動プレイ
+                if (isCPUMode && s.turn === 'p2') {
+                    setTimeout(() => { cpuTurn(s); }, 2500);
+                }
             }
             lastTurn = s.turn;
 
@@ -666,6 +790,11 @@
             document.getElementById('my-ap').innerText = `${me.ap}/${me.max_ap}`;
             document.getElementById('weather-txt').innerText = s.weather;
             document.getElementById('turn-txt').innerText = s.turn_count;
+            
+            // CPU戦：CPUが選択を求められている場合は自動選択
+            if (isCPUMode && s.pending_selection && s.pending_selection.player === 'p2') {
+                cpuSelectTarget(s);
+            }
             
             // 選択モード中かチェック
             const isSelectMode = s.pending_selection && s.pending_selection.player === myId;

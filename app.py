@@ -171,6 +171,10 @@ def handle_deck(data):
     random.shuffle(game.players[pid]["deck"])
     game.players[pid]["ready"] = True
     if game.players["p1"]["ready"] and game.players["p2"]["ready"]:
+        # 先攻をランダムに決定
+        game.turn = random.choice(["p1", "p2"])
+        game.log.append(f"先攻: {game.turn.upper()}")
+        
         for p in ["p1", "p2"]:
             game.players[p]["hand"] = [game.players[p]["deck"].pop(0) for _ in range(5) if game.players[p]["deck"]]
     emit('update_ui', vars(game), room=room_id)
