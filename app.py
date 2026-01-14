@@ -82,14 +82,16 @@ class GameInstance:
 
     def reset(self):
         self.players = {
-            "p1": {"ap": 2, "max_ap": 2, "score": 0, "hand": [], "field": [], "deck": [], "ready": False},
-            "p2": {"ap": 2, "max_ap": 2, "score": 0, "hand": [], "field": [], "deck": [], "ready": False}
+            "p1": {"ap": 2, "max_ap": 2, "score": 0, "hand": [], "field": [], "deck": [], "ready": False, "rush_used": False},
+            "p2": {"ap": 2, "max_ap": 2, "score": 0, "hand": [], "field": [], "deck": [], "ready": False, "rush_used": False}
         }
         self.turn = "p1"
         self.turn_count = 1
         self.weather = "晴天"
+        self.next_weather = None
         self.winner = None
         self.log = ["観測君VS ULTIMATE Ver 3.1 開始！"]
+        self.pending_selection = None  # {"type": "...", "player": "...", "targets": [...], "card_played": {...}}
 
 game = GameInstance()
 
@@ -111,6 +113,65 @@ def handle_deck(data):
     if game.players["p1"]["ready"] and game.players["p2"]["ready"]:
         for p in ["p1", "p2"]:
             game.players[p]["hand"] = [game.players[p]["deck"].pop(0) for _ in range(5) if game.players[p]["deck"]]
+    emit('update_ui', vars(game), broadcast=True)
+
+@socketio.on('select_target')
+def handle_selection(data):
+    if not game.pending_selection or data['player_id'] != game.pending_selection['player']:
+        return
+    
+    sel = game.pending_selection
+    pid = sel['player']
+    target_idx = data['target_index']
+    
+    if target_idx not in sel['targets']:
+        return
+    
+    p = game.players[pid]
+    
+    if sel['type'] == 'buff_ally':
+        target = p['field'][target_idx]
+        target['power'] = target.get('power', 0) + 5
+        target['upkeep'] = 0
+        game.log.append(f"{pid.upper()}: {target['name']}を強化!")
+    
+    elif sel['type'] == 'destroy_enemy':
+        opp = game.players[sel['target_player']]
+        destroyed = opp['field'][target_idx]
+        opp['field'].pop(target_idx)
+        game.log.append(f"{pid.upper()}: {destroyed['name']}を破壊!")
+    
+    elif sel['type'] == 'freeze_enemy':
+        opp = game.players[sel['target_player']]
+        target = opp['field'][target_idx]
+        target['frozen'] = 2
+        game.log.append(f"{pid.upper()}: {target['name']}を2ターン停止!")
+    
+    elif sel['type'] == 'sacrifice_for_upkeep':
+        destroyed = p['field'][target_idx]
+        p['field'].pop(target_idx)
+        game.log.append(f"{pid.upper()}: {destroyed['name']}を破棄")
+        # 再計算
+        upkeep = sum(c.get('upkeep', 0) for c in p['field'])
+        clerk_bonus = sum(1 for c in p['field'] if c['id'] == 'Clerk')
+        p['ap'] = p['max_ap'] - upkeep + clerk_bonus
+        if p['ap'] < 0 and p['field']:
+            # まだ不足なら再選択
+            game.pending_selection = {
+                'type': 'sacrifice_for_upkeep',
+                'player': pid,
+                'targets': list(range(len(p['field'])))
+            }
+            emit('update_ui', vars(game), broadcast=True)
+            return
+    
+    elif sel['type'] == 'sacrifice_for_rush':
+        destroyed = p['field'][target_idx]
+        p['field'].pop(target_idx)
+        game.log.append(f"{pid.upper()}: 突貫工事の反動で{destroyed['name']}が破壊")
+    
+    game.pending_selection = None
+    recalc_scores()
     emit('update_ui', vars(game), broadcast=True)
 
 @socketio.on('play_card')
@@ -169,6 +230,8 @@ def handle_play(data):
                 p["ap"] = min(p["max_ap"], p["ap"] + 5)
             elif card["id"] == "Rush": 
                 p["ap"] += 4
+                p["rush_used"] = True
+                game.log.append(f"{pid.upper()}: ターン終了時に1台破壊される")
             elif card["id"] == "Decision": 
                 p["max_ap"] += 2
             elif card["id"] == "Overtime":
@@ -178,12 +241,72 @@ def handle_play(data):
                 p["hand"] = []
                 p["ap"] = p["max_ap"]
             elif card["id"] == "Consult":
+                game.next_weather = "晴天"
                 game.log.append(f"{pid.upper()}: 次ターンは晴天!")
-            elif card["id"] == "Training" and p["field"]:
-                target = p["field"][-1]
-                target["power"] = target.get("power", 0) + 5
-                target["upkeep"] = 0
-                game.log.append(f"{pid.upper()}: {target['name']}を強化!")
+            elif card["id"] == "Training":
+                if p["field"]:
+                    game.pending_selection = {
+                        "type": "buff_ally",
+                        "player": pid,
+                        "targets": list(range(len(p["field"]))),
+                        "card_id": "Training"
+                    }
+                    game.log.append(f"{pid.upper()}: 強化する社員を選んでください")
+                    emit('update_ui', vars(game), broadcast=True)
+                    return
+            elif card["id"] == "Safety":
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                opp["max_ap"] = max(1, opp["max_ap"] - 1)
+                game.log.append(f"{pid.upper()}: 相手の最大AP-1")
+            elif card["id"] == "Lost":
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                targets = [i for i, c in enumerate(opp["field"]) if c.get("power", 0) >= 10]
+                if targets:
+                    game.pending_selection = {
+                        "type": "destroy_enemy",
+                        "player": pid,
+                        "target_player": "p2" if pid == "p1" else "p1",
+                        "targets": targets,
+                        "card_id": "Lost"
+                    }
+                    game.log.append(f"{pid.upper()}: 紛失させる機材を選んでください")
+                    emit('update_ui', vars(game), broadcast=True)
+                    return
+            elif card["id"] == "Bush":
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                targets = [i for i, c in enumerate(opp["field"]) if c.get("cost", 0) <= 2]
+                if targets:
+                    game.pending_selection = {
+                        "type": "destroy_enemy",
+                        "player": pid,
+                        "target_player": "p2" if pid == "p1" else "p1",
+                        "targets": targets,
+                        "card_id": "Bush"
+                    }
+                    game.log.append(f"{pid.upper()}: 破壊する機材を選んでください")
+                    emit('update_ui', vars(game), broadcast=True)
+                    return
+            elif card["id"] == "Complaint":
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                opp["ap"] = max(0, opp["ap"] - 3)
+                game.log.append(f"{pid.upper()}: 相手のAPを3削った!")
+            elif card["id"] == "Boundary":
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                if opp["field"]:
+                    game.pending_selection = {
+                        "type": "freeze_enemy",
+                        "player": pid,
+                        "target_player": "p2" if pid == "p1" else "p1",
+                        "targets": list(range(len(opp["field"]))),
+                        "card_id": "Boundary"
+                    }
+                    game.log.append(f"{pid.upper()}: 停止する機材を選んでください")
+                    emit('update_ui', vars(game), broadcast=True)
+                    return
+            elif card["id"] == "Audit":
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                opp["max_ap"] = max(1, opp["max_ap"] - 2)
+                game.log.append(f"{pid.upper()}: 相手の最大APを2削った!")
 
             # 通常のログ記録（進化以外）
             if not is_evolution:
@@ -201,28 +324,87 @@ def handle_play(data):
 
 def recalc_scores():
     for pid in ["p1", "p2"]:
+        p = game.players[pid]
         s = 0
-        for c in game.players[pid]["field"]:
+        
+        # フィールドの補助カードをチェック
+        has_senior = any(c["id"] == "Senior" for c in p["field"])
+        has_genset = any(c["id"] == "GenSet" for c in p["field"])
+        has_radio = any(c["id"] == "Radio" for c in p["field"])
+        has_pump = any(c["id"] == "Pump" for c in p["field"])
+        
+        for c in p["field"]:
+            # 停止中のカードはパワー0
+            if c.get("frozen", 0) > 0:
+                continue
+            
             v = c["power"]
+            
+            # Senior効果: 新入社員のパワー+3
+            if has_senior and c["id"] == "Newbie": v += 3
+            
+            # GenSet効果: 他機材のパワー+2（自身以外のMACHINE）
+            if has_genset and c["id"] != "GenSet" and c["type"] == "MACHINE": v += 2
+            
+            # Radio効果: ドローンを強化+3
+            if has_radio and c["id"] == "Drone": v += 3
+            
+            # Lights効果: 後半（ターン6以降）でパワー+4
+            if c["id"] == "Lights" and game.turn_count >= 6: v += 4
+            
+            # GNSS: 晴天時+5
             if c["id"] == "GNSS" and game.weather == "晴天": v += 5
+            
+            # 濃霧: ドローン以外半減
             if game.weather == "濃霧" and c["id"] != "Drone": v //= 2
-            if game.weather == "豪雨" and c["id"] == "Concrete": v -= 5
-            s += v
-        game.players[pid]["score"] = s
+            
+            # 豪雨: 生コン-5（ただしPumpがあれば無効化）
+            if game.weather == "豪雨" and c["id"] == "Concrete":
+                if not has_pump: v -= 5
+            
+            s += max(0, v)
+        
+        p["score"] = s
 
 @socketio.on('end_turn')
 def end_turn(data):
     if data['player_id'] != game.turn or game.winner: return
+    
+    # Rush効果: ターン終了時に場の1台を破壊
+    prev_player = game.players[game.turn]
+    if prev_player.get("rush_used") and prev_player["field"]:
+        game.pending_selection = {
+            "type": "sacrifice_for_rush",
+            "player": game.turn,
+            "targets": list(range(len(prev_player["field"])))
+        }
+        prev_player["rush_used"] = False
+        game.log.append(f"{game.turn.upper()}: 突貫工事の反動！破壊するカードを選んでください")
+        emit('update_ui', vars(game), broadcast=True)
+        return
     
     game.turn = "p2" if game.turn == "p1" else "p1"
     
     # P1のターン開始時に天候と日付を更新
     if game.turn == "p1":
         game.turn_count += 1
-        game.weather = random.choice(["晴天", "晴天", "豪雨", "濃霧"])
+        # Consult効果で予約された天候があればそれを使用
+        if game.next_weather:
+            game.weather = game.next_weather
+            game.next_weather = None
+        else:
+            game.weather = random.choice(["晴天", "晴天", "豪雨", "濃霧"])
         game.log.append(f"--- Day {game.turn_count} 天候: {game.weather} ---")
     
     p = game.players[game.turn]
+    
+    # 停止カウンターを減少
+    for c in p["field"]:
+        if c.get("frozen", 0) > 0:
+            c["frozen"] -= 1
+            if c["frozen"] == 0:
+                game.log.append(f"{game.turn.upper()}: {c['name']}が復帰!")
+    
     p["max_ap"] = min(p["max_ap"] + 1, 15)
     
     # 維持費計算 (事務員ボーナス含む)
@@ -230,17 +412,16 @@ def end_turn(data):
     clerk_bonus = sum(1 for c in p["field"] if c["id"] == "Clerk")
     p["ap"] = p["max_ap"] - upkeep + clerk_bonus
     
-    # APがマイナスの場合、維持費を払えるまで場のカードを破棄
-    destroyed_count = 0
-    while p["ap"] < 0 and p["field"]:
-        destroyed = p["field"].pop(0)
-        destroyed_count += 1
-        upkeep = sum(c.get("upkeep", 0) for c in p["field"])
-        clerk_bonus = sum(1 for c in p["field"] if c["id"] == "Clerk")
-        p["ap"] = p["max_ap"] - upkeep + clerk_bonus
-    
-    if destroyed_count > 0:
-        game.log.append(f"{game.turn.upper()}: 維持費不足で{destroyed_count}台破棄")
+    # APがマイナスの場合、プレイヤーに選択させる
+    if p["ap"] < 0 and p["field"]:
+        game.pending_selection = {
+            "type": "sacrifice_for_upkeep",
+            "player": game.turn,
+            "targets": list(range(len(p["field"])))
+        }
+        game.log.append(f"{game.turn.upper()}: 維持費不足！破棄するカードを選んでください")
+        emit('update_ui', vars(game), broadcast=True)
+        return
     
     # ドローフェーズ
     if p["deck"]: 

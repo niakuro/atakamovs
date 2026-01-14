@@ -62,6 +62,13 @@
             z-index: 2000;
         }
         #result-title { font-size: 60px; font-weight: bold; margin-bottom: 30px; }
+        
+        /* 選択モード */
+        .card-selectable { border: 3px solid var(--gold) !important; animation: pulse 1s infinite; }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 10px var(--gold); }
+            50% { box-shadow: 0 0 25px var(--gold); }
+        }
     </style>
 </head>
 <body>
@@ -252,6 +259,10 @@
             socket.emit('reset_game');
             setTimeout(() => { location.reload(); }, 100);
         }
+        
+        function selectTarget(idx) {
+            socket.emit('select_target', {player_id: myId, target_index: idx});
+        }
 
         socket.on('update_ui', s => {
             const me = s.players[myId], opp = s.players[myId==='p1'?'p2':'p1'];
@@ -275,16 +286,43 @@
             document.getElementById('weather-txt').innerText = s.weather;
             document.getElementById('turn-txt').innerText = s.turn_count;
             
-            const render = (c, i, isMe) => `
-                <div class="card ${c.type}" onclick="${isMe ? `socket.emit('play_card',{player_id:myId,card_index:${i}})` : ''}">
-                    <div class="cost">${c.cost}</div><b>${c.name}</b><br><small>${c.desc}</small>
-                    <div class="upkeep">維持:${c.upkeep||0}</div>
-                    <div class="power">${c.power||''}</div>
-                </div>`;
+            // 選択モード中かチェック
+            const isSelectMode = s.pending_selection && s.pending_selection.player === myId;
+            const selectType = isSelectMode ? s.pending_selection.type : null;
+            const selectTargets = isSelectMode ? s.pending_selection.targets : [];
             
-            document.getElementById('my-hand').innerHTML = me.hand.map((c, i) => render(c, i, true)).join('');
-            document.getElementById('my-field').innerHTML = me.field.map(c => render(c, 0, false)).join('');
-            document.getElementById('opp-field').innerHTML = opp.field.map(c => render(c, 0, false)).join('');
+            const render = (c, i, isMe, canSelect) => {
+                const selectClass = canSelect ? 'card-selectable' : '';
+                const onclick = canSelect ? `selectTarget(${i})` : (isMe ? `socket.emit('play_card',{player_id:myId,card_index:${i}})` : '');
+                return `
+                    <div class="card ${c.type} ${selectClass}" onclick="${onclick}">
+                        <div class="cost">${c.cost}</div><b>${c.name}</b><br><small>${c.desc}</small>
+                        <div class="upkeep">維持:${c.upkeep||0}</div>
+                        <div class="power">${c.power||''}</div>
+                        ${c.frozen > 0 ? '<div style="position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(100,150,255,0.5);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;">凍結</div>' : ''}
+                    </div>`;
+            };
+            
+            // 選択UIの表示
+            if (isSelectMode) {
+                ind.innerText = "カードを選択してください";
+                ind.style.color = "var(--gold)";
+            }
+            
+            document.getElementById('my-hand').innerHTML = me.hand.map((c, i) => render(c, i, !isSelectMode, false)).join('');
+            
+            // 自分のフィールド（buff_ally, sacrifice系の選択対象）
+            const myFieldSelectable = isSelectMode && ['buff_ally', 'sacrifice_for_upkeep', 'sacrifice_for_rush'].includes(selectType);
+            document.getElementById('my-field').innerHTML = me.field.map((c, i) => 
+                render(c, i, false, myFieldSelectable && selectTargets.includes(i))
+            ).join('');
+            
+            // 相手のフィールド（destroy_enemy, freeze_enemy系の選択対象）
+            const oppFieldSelectable = isSelectMode && ['destroy_enemy', 'freeze_enemy'].includes(selectType);
+            document.getElementById('opp-field').innerHTML = opp.field.map((c, i) => 
+                render(c, i, false, oppFieldSelectable && selectTargets.includes(i))
+            ).join('');
+            
             // ログの表示エリアを少し見やすく
             document.getElementById('log').innerHTML = s.log.slice(-12).map(l => `<div>> ${l}</div>`).join('');
 
