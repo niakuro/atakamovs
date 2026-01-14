@@ -120,9 +120,9 @@ def handle_play(data):
     p = game.players[pid]
     card = p["hand"][idx]
 
+    # 豪雨時はスペルカード使用禁止
     if game.weather == "豪雨" and card["type"] == "SPELL":
-        # 修正：効果の表示
-        game.log.append("【豪雨】スペル使用不可！")
+        game.log.append(f"{pid.upper()}: スペル使用不可！(豪雨)")
         emit('update_ui', vars(game), broadcast=True)
         return
 
@@ -143,34 +143,59 @@ def handle_play(data):
         if is_evolution:
             p["field"].pop(evolve_target_idx)
             p["field"].append(card)
+            game.log.append(f"{pid.upper()}: {card['name']} (進化召喚!)")
         else:
-            if card["type"] == "MACHINE": p["field"].append(card)
+            if card["type"] == "MACHINE": 
+                p["field"].append(card)
             
-            # スペル効果の実装
-            if card["id"] == "Newbie" and p["deck"]: p["hand"].append(p["deck"].pop(0))
+            # カード効果の実装
+            if card["id"] == "Newbie" and p["deck"]: 
+                p["hand"].append(p["deck"].pop(0))
             elif card["id"] == "Elite":
                 p["max_ap"] = max(1, p["max_ap"]-1)
                 for _ in range(2): 
                     if p["deck"]: p["hand"].append(p["deck"].pop(0))
-            elif card["id"] == "Fund": p["max_ap"] += 1
+            elif card["id"] == "Fund": 
+                p["max_ap"] += 1
             elif card["id"] == "Note":
                 for _ in range(2):
                     if p["deck"]: p["hand"].append(p["deck"].pop(0))
-            elif card["id"] == "Repair": p["ap"] = min(p["max_ap"], p["ap"] + 5)
-            elif card["id"] == "Rush": p["ap"] += 4
-            elif card["id"] == "Decision": p["max_ap"] += 2
+            elif card["id"] == "Check":
+                for _ in range(3):
+                    if p["deck"]: p["hand"].append(p["deck"].pop(0))
+            elif card["id"] == "Transceiver" and p["deck"]:
+                p["hand"].append(p["deck"].pop(0))
+            elif card["id"] == "Repair": 
+                p["ap"] = min(p["max_ap"], p["ap"] + 5)
+            elif card["id"] == "Rush": 
+                p["ap"] += 4
+            elif card["id"] == "Decision": 
+                p["max_ap"] += 2
             elif card["id"] == "Overtime":
                 if p["deck"]: p["hand"].append(p["deck"].pop(0))
                 p["ap"] += 2
             elif card["id"] == "NightWork":
                 p["hand"] = []
                 p["ap"] = p["max_ap"]
+            elif card["id"] == "Consult":
+                game.log.append(f"{pid.upper()}: 次ターンは晴天!")
+            elif card["id"] == "Training" and p["field"]:
+                target = p["field"][-1]
+                target["power"] = target.get("power", 0) + 5
+                target["upkeep"] = 0
+                game.log.append(f"{pid.upper()}: {target['name']}を強化!")
 
-        # ログに使用したカードと効果を表示
-        game.log.append(f"{pid.upper()}: {card['name']} ({card['desc']})")
+            # 通常のログ記録（進化以外）
+            if not is_evolution:
+                game.log.append(f"{pid.upper()}: {card['name']}")
         
-        if card["id"] == "GoalFinal" and p["score"] >= 10: game.winner = pid
-        if card["id"] == "Goal30" and p["score"] >= 30: game.winner = pid
+        # 勝利条件判定
+        if card["id"] == "GoalFinal" and p["score"] >= 10: 
+            game.winner = pid
+            game.log.append(f"{pid.upper()}: 社長決裁で勝利!")
+        if card["id"] == "Goal30" and p["score"] >= 30: 
+            game.winner = pid
+            game.log.append(f"{pid.upper()}: 工期完遂で勝利!")
         recalc_scores()
     emit('update_ui', vars(game), broadcast=True)
 
@@ -187,23 +212,42 @@ def recalc_scores():
 
 @socketio.on('end_turn')
 def end_turn(data):
-    if data['player_id'] != game.turn: return
+    if data['player_id'] != game.turn or game.winner: return
+    
     game.turn = "p2" if game.turn == "p1" else "p1"
+    
+    # P1のターン開始時に天候と日付を更新
     if game.turn == "p1":
         game.turn_count += 1
         game.weather = random.choice(["晴天", "晴天", "豪雨", "濃霧"])
+        game.log.append(f"--- Day {game.turn_count} 天候: {game.weather} ---")
+    
     p = game.players[game.turn]
     p["max_ap"] = min(p["max_ap"] + 1, 15)
+    
+    # 維持費計算 (事務員ボーナス含む)
     upkeep = sum(c.get("upkeep", 0) for c in p["field"])
-    p["ap"] = p["max_ap"] - upkeep + sum(1 for c in p["field"] if c["id"] == "Clerk")
+    clerk_bonus = sum(1 for c in p["field"] if c["id"] == "Clerk")
+    p["ap"] = p["max_ap"] - upkeep + clerk_bonus
+    
+    # APがマイナスの場合、維持費を払えるまで場のカードを破棄
+    destroyed_count = 0
     while p["ap"] < 0 and p["field"]:
-        p["field"].pop(0)
-        p["ap"] = p["max_ap"] - sum(c.get("upkeep", 0) for c in p["field"])
-    if p["deck"]: p["hand"].append(p["deck"].pop(0))
+        destroyed = p["field"].pop(0)
+        destroyed_count += 1
+        upkeep = sum(c.get("upkeep", 0) for c in p["field"])
+        clerk_bonus = sum(1 for c in p["field"] if c["id"] == "Clerk")
+        p["ap"] = p["max_ap"] - upkeep + clerk_bonus
+    
+    if destroyed_count > 0:
+        game.log.append(f"{game.turn.upper()}: 維持費不足で{destroyed_count}台破棄")
+    
+    # ドローフェーズ
+    if p["deck"]: 
+        p["hand"].append(p["deck"].pop(0))
+    
     recalc_scores()
     emit('update_ui', vars(game), broadcast=True)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
-if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
