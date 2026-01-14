@@ -167,10 +167,15 @@ class GameTester:
             await asyncio.sleep(10)
             
             # Check if CPU is making moves
-            turn_count = await page.locator('#turn-txt').text_content()
-            self.log(f"Current turn: {turn_count}")
+            turn_count_text = await page.locator('#turn-txt').text_content()
+            self.log(f"Current turn: {turn_count_text}")
             
-            if int(turn_count) > 1:
+            try:
+                turn_count = int(turn_count_text)
+            except (ValueError, TypeError):
+                turn_count = 1
+            
+            if turn_count > 1:
                 self.log_pass("CPU is taking turns (game progressing)")
             else:
                 self.log_bug("Game not progressing - CPU may not be working")
