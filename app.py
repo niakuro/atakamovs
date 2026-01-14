@@ -107,7 +107,12 @@ def handle_reset():
 @socketio.on('submit_deck')
 def handle_deck(data):
     pid = data['player_id']
-    game.players[pid]["deck"] = [dict(next(c for c in CARD_DB if c['id'] == cid)) for cid in data['deck']]
+    # カードをコピーしてデッキに追加（frozen属性を初期化）
+    game.players[pid]["deck"] = []
+    for cid in data['deck']:
+        card = dict(next(c for c in CARD_DB if c['id'] == cid))
+        card['frozen'] = 0
+        game.players[pid]["deck"].append(card)
     random.shuffle(game.players[pid]["deck"])
     game.players[pid]["ready"] = True
     if game.players["p1"]["ready"] and game.players["p2"]["ready"]:
@@ -134,6 +139,11 @@ def handle_selection(data):
         target['power'] = target.get('power', 0) + 5
         target['upkeep'] = 0
         game.log.append(f"{pid.upper()}: {target['name']}を強化!")
+        # 勝利判定を再度チェック
+        recalc_scores()
+        if p['score'] >= 30:
+            # Goal30があれば勝利の可能性
+            pass
     
     elif sel['type'] == 'destroy_enemy':
         opp = game.players[sel['target_player']]
@@ -162,13 +172,29 @@ def handle_selection(data):
                 'player': pid,
                 'targets': list(range(len(p['field'])))
             }
+            game.log.append(f"{pid.upper()}: まだ維持費不足！さらに破棄")
+            recalc_scores()
             emit('update_ui', vars(game), broadcast=True)
             return
+        # 維持費支払い完了、ドロー続行
+        game.pending_selection = None
+        if p['deck']: 
+            p['hand'].append(p['deck'].pop(0))
+        recalc_scores()
+        emit('update_ui', vars(game), broadcast=True)
+        return
     
     elif sel['type'] == 'sacrifice_for_rush':
         destroyed = p['field'][target_idx]
         p['field'].pop(target_idx)
         game.log.append(f"{pid.upper()}: 突貫工事の反動で{destroyed['name']}が破壊")
+        # Rush終了後、ターン終了処理を続行
+        game.pending_selection = None
+        recalc_scores()
+        emit('update_ui', vars(game), broadcast=True)
+        # ターンを切り替える
+        end_turn_internal(pid)
+        return
     
     game.pending_selection = None
     recalc_scores()
@@ -203,10 +229,12 @@ def handle_play(data):
         p["ap"] -= play_cost
         if is_evolution:
             p["field"].pop(evolve_target_idx)
+            card["frozen"] = 0  # 停止状態初期化
             p["field"].append(card)
             game.log.append(f"{pid.upper()}: {card['name']} (進化召喚!)")
         else:
             if card["type"] == "MACHINE": 
+                card["frozen"] = 0  # 停止状態初期化
                 p["field"].append(card)
             
             # カード効果の実装
@@ -370,19 +398,23 @@ def recalc_scores():
 def end_turn(data):
     if data['player_id'] != game.turn or game.winner: return
     
-    # Rush効果: ターン終了時に場の1台を破壊
-    prev_player = game.players[game.turn]
-    if prev_player.get("rush_used") and prev_player["field"]:
+    # Rush効果: 自分のターン終了時に場の1台を破壊
+    current_player = game.players[game.turn]
+    if current_player.get("rush_used") and current_player["field"]:
         game.pending_selection = {
             "type": "sacrifice_for_rush",
             "player": game.turn,
-            "targets": list(range(len(prev_player["field"])))
+            "targets": list(range(len(current_player["field"])))
         }
-        prev_player["rush_used"] = False
+        current_player["rush_used"] = False
         game.log.append(f"{game.turn.upper()}: 突貫工事の反動！破壊するカードを選んでください")
         emit('update_ui', vars(game), broadcast=True)
         return
     
+    end_turn_internal(data['player_id'])
+
+def end_turn_internal(player_id):
+    """ターン終了の内部処理（選択処理後にも呼ばれる）"""
     game.turn = "p2" if game.turn == "p1" else "p1"
     
     # P1のターン開始時に天候と日付を更新
