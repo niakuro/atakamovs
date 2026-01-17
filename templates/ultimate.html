@@ -371,7 +371,8 @@
                 <div id="my-ap" style="font-size:28px; color:#2ecc71;">2/2</div>
             </div>
             <div id="log" class="log"></div>
-            <button onclick="socket.emit('end_turn',{player_id:myId})" class="btn btn-gold" style="width:100%; font-size:20px;">ターン終了</button>
+            <button id="end-turn-btn" onclick="socket.emit('end_turn',{player_id:myId})" class="btn btn-gold" style="width:100%; font-size:20px;">ターン終了</button>
+            <button id="shakapachi-btn" onclick="shuffleHand()" class="btn" style="width:100%; font-size:20px; background: linear-gradient(135deg, var(--purple), var(--cyan)); display:none;">しゃかぱち</button>
         </div>
     </div>
 
@@ -380,6 +381,31 @@
         let myId, myDeck = [];
         let lastTurn = null;
         let currentRoomId = null;        let isCPUMode = false;  // CPU戦モード
+        
+        // しゃかぱち：手札を反転させる
+        function shuffleHand() {
+            const handContainer = document.getElementById('my-hand');
+            const cards = Array.from(handContainer.children);
+            
+            // カードにアニメーションを追加
+            cards.forEach((card, i) => {
+                const targetPos = cards.length - 1 - i;
+                const offset = (targetPos - i) * 103; // カードの幅+gap
+                card.style.transition = 'transform 0.5s ease';
+                card.style.transform = `translateX(${offset}px)`;
+            });
+            
+            // アニメーション終了後に実際に順序を変更
+            setTimeout(() => {
+                cards.reverse();
+                handContainer.innerHTML = '';
+                cards.forEach(card => {
+                    card.style.transform = '';
+                    card.style.transition = '';
+                    handContainer.appendChild(card);
+                });
+            }, 500);
+        }
 
         // CPU戦開始
         function startCPUGame() {
@@ -587,61 +613,61 @@
             const presets = {
                 // 社員育成デッキ：社員カードとTraining（研修）で強化していく戦略
                 TRAINING: [
-                    "Newbie","Newbie","Newbie","Newbie",  // 新入社員を大量投入
-                    "Staff","Staff","Staff",  // 進化先
-                    "Chief","Chief",  // 最終進化
-                    "Senior","Senior","Senior",  // 新入社員を強化
-                    "Ace","Ace",  // 現場のエース
-                    "Expert","Expert",  // ベテラン職人
-                    "Clerk","Clerk","Clerk",  // 事務員でAP回復
+                    "Newbie","Newbie","Newbie","Newbie","Newbie","Newbie",  // 新入社員を大量投入
+                    "Staff","Staff","Staff","Staff",  // 進化先
+                    "Chief","Chief","Chief",  // 最終進化
+                    "Senior","Senior","Senior","Senior",  // 新入社員を強化
+                    "Ace","Ace","Ace",  // 現場のエース
+                    "Expert","Expert","Expert",  // ベテラン職人
+                    "Clerk","Clerk","Clerk","Clerk",  // 事務員でAP回復
                     "SafetyOfficer","SafetyOfficer",  // 安全管理
                     "Training","Training","Training",  // 研修で社員強化
                     "Elite","Elite",  // 少数精鋭
                     "Note","Note","Check","Check",  // ドロー
-                    "Repair","Repair","Overtime",  // AP管理
+                    "Repair","Repair","Overtime","Overtime",  // AP管理
                     "Decision","Fund",  // 最大AP増加
                     "Lost","Bush",  // 除去
-                    "Goal30","Goal30","GoalFinal"  // 勝利条件
+                    "Goal30","GoalFinal"  // 勝利条件
                 ],
                 
                 // 測量機械デッキ：測量機器の進化ラインを活かす正統派
                 SURVEY: [
-                    "LevelBasic","LevelBasic","LevelBasic",  // レベル基本
-                    "LevelAuto","LevelAuto","LevelAuto",  // オートレベル進化
-                    "StaffBasic","StaffBasic","StaffBasic",  // スタッフ基本
-                    "StaffRef","StaffRef","StaffRef",  // 反射スタッフ進化
+                    "LevelBasic","LevelBasic","LevelBasic","LevelBasic",  // レベル基本
+                    "LevelAuto","LevelAuto","LevelAuto","LevelAuto",  // オートレベル進化
+                    "StaffBasic","StaffBasic","StaffBasic","StaffBasic",  // スタッフ基本
+                    "StaffRef","StaffRef","StaffRef","StaffRef",  // 反射スタッフ進化
                     "TS","TS","TS","TS",  // 光波トータルステーション
-                    "Drone","Drone","Drone",  // ドローン（霧に強い）
-                    "Laser","Laser",  // レーザー墨出し
+                    "Drone","Drone","Drone","Drone",  // ドローン（霧に強い）
+                    "Laser","Laser","Laser",  // レーザー墨出し
                     "Compass","Tripod","Tripod",  // 補助機材
-                    "GenSet","GenSet",  // 発電機で全体強化
+                    "GenSet","GenSet","GenSet",  // 発電機で全体強化
                     "SmallTruck","SmallTruck",  // 軽トラで設置サポート
                     "Note","Note","Check","Check",  // ドロー
-                    "Repair","Repair","Overtime",  // AP管理
-                    "Consult",  // 天候操作
-                    "Lost",  // 除去
-                    "Goal30","Goal30","GoalFinal"  // 勝利条件
+                    "Repair","Repair","Overtime","Overtime",  // AP管理
+                    "Consult","Consult",  // 天候操作
+                    "Lost","Bush",  // 除去
+                    "Goal30","GoalFinal"  // 勝利条件
                 ],
                 
                 // 重機土木デッキ：大型重機とパワーで圧倒する
                 CONSTRUCTION: [
-                    "Excavator","Excavator","Excavator",  // バックホー
+                    "Excavator","Excavator","Excavator","Excavator",  // バックホー
                     "Rental","Rental","Rental",  // レンタル重機
-                    "Concrete","Concrete","Concrete",  // 生コン車
-                    "Pump","Pump",  // 排水ポンプ（雨対策）
-                    "GNSS","GNSS",  // GNSS衛星
-                    "Scanner","Scanner",  // 3Dスキャナ
-                    "UsedTS","UsedTS",  // 中古TS
-                    "GenSet","GenSet",  // 発電機
-                    "Lights","Lights",  // 投光器
+                    "Concrete","Concrete","Concrete","Concrete",  // 生コン車
+                    "Pump","Pump","Pump",  // 排水ポンプ（雨対策）
+                    "GNSS","GNSS","GNSS",  // GNSS衛星
+                    "Scanner","Scanner","Scanner",  // 3Dスキャナ
+                    "UsedTS","UsedTS","UsedTS",  // 中古TS
+                    "GenSet","GenSet","GenSet",  // 発電機
+                    "Lights","Lights","Lights",  // 投光器
                     "Intern","Intern","Intern",  // 実習生（囮）
-                    "Clerk","Clerk",  // 事務員（AP回復）
-                    "Rush","Rush",  // 突貫工事
+                    "Clerk","Clerk","Clerk",  // 事務員（AP回復）
+                    "Rush","Rush","Rush",  // 突貫工事
                     "Note","Note","Elite",  // ドロー
                     "NightWork","Repair","Overtime","Overtime",  // AP大量管理
-                    "Decision",  // 最大AP増加
-                    "Lost",  // 除去
-                    "Goal30","Goal30","GoalFinal"  // 勝利条件
+                    "Decision","Fund",  // 最大AP増加
+                    "Lost","Bush",  // 除去
+                    "Goal30","GoalFinal"  // 勝利条件
                 ]
             };
             myDeck = [...presets[mode]];
@@ -772,6 +798,17 @@
             
             ind.innerText = s.turn === myId ? "YOUR TURN" : "ENEMY TURN";
             ind.style.color = s.turn === myId ? "var(--blue)" : "var(--red)";
+            
+            // ターン終了ボタンとしゃかぱちボタンの表示切り替え
+            const endTurnBtn = document.getElementById('end-turn-btn');
+            const shakapachiBtn = document.getElementById('shakapachi-btn');
+            if (s.turn === myId) {
+                endTurnBtn.style.display = 'block';
+                shakapachiBtn.style.display = 'none';
+            } else {
+                endTurnBtn.style.display = 'none';
+                shakapachiBtn.style.display = 'block';
+            }
 
             // 修正：ターン演出に天候を追加
             if (lastTurn && lastTurn !== s.turn) {

@@ -337,6 +337,9 @@ def handle_play(data):
             elif card["id"] == "NightWork":
                 p["hand"] = []
                 p["ap"] = p["max_ap"]
+                # 2枚ドロー
+                for _ in range(2):
+                    if p["deck"]: p["hand"].append(p["deck"].pop(0))
             elif card["id"] == "Consult":
                 game.next_weather = "晴天"
                 game.log.append(f"{pid.upper()}: 次ターンは晴天!")
@@ -516,7 +519,7 @@ def end_turn_internal(game, player_id, room_id):
     # 維持費計算 (事務員ボーナス含む)
     upkeep = sum(c.get("upkeep", 0) for c in p["field"])
     clerk_bonus = sum(1 for c in p["field"] if c["id"] == "Clerk")
-    p["ap"] = p["max_ap"] - upkeep + clerk_bonus
+    p["ap"] = min(p["max_ap"], p["max_ap"] - upkeep + clerk_bonus)
     
     # APがマイナスの場合、プレイヤーに選択させる
     if p["ap"] < 0 and p["field"]:
