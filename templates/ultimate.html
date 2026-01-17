@@ -627,7 +627,7 @@
                     "Repair","Repair","Overtime","Overtime",  // AP管理
                     "Decision","Fund",  // 最大AP増加
                     "Lost","Bush",  // 除去
-                    "Goal30","GoalFinal"  // 勝利条件
+                    "Goal30","Goal30","GoalFinal","GoalFinal"  // 勝利条件
                 ],
                 
                 // 測量機械デッキ：測量機器の進化ラインを活かす正統派
@@ -646,7 +646,7 @@
                     "Repair","Repair","Overtime","Overtime",  // AP管理
                     "Consult","Consult",  // 天候操作
                     "Lost","Bush",  // 除去
-                    "Goal30","GoalFinal"  // 勝利条件
+                    "Goal30","Goal30","GoalFinal","GoalFinal"  // 勝利条件
                 ],
                 
                 // 重機土木デッキ：大型重機とパワーで圧倒する
@@ -667,7 +667,7 @@
                     "NightWork","Repair","Overtime","Overtime",  // AP大量管理
                     "Decision","Fund",  // 最大AP増加
                     "Lost","Bush",  // 除去
-                    "Goal30","GoalFinal"  // 勝利条件
+                    "Goal30","Goal30","GoalFinal","GoalFinal"  // 勝利条件
                 ]
             };
             myDeck = [...presets[mode]];
@@ -697,7 +697,7 @@
                     "Repair","Repair","Overtime",
                     "Consult","Consult",
                     "Lost","Boundary",
-                    "Goal30","Goal30","GoalFinal"
+                    "Goal30","Goal30","GoalFinal","GoalFinal"
                 ];
                 setTimeout(() => {
                     socket.emit('submit_deck', {player_id: 'p2', deck: cpuDeck});
