@@ -376,9 +376,10 @@
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
             <h2 style="color:var(--gold); margin:0;">デッキ編成 (<span id="deck-count">0</span>/40)</h2>
             <div style="display:flex; gap:15px;">
-                <button onclick="loadDeck('TRAINING')" class="btn" style="background:#333; color:#fff;">社員育成デッキ</button>
-                <button onclick="loadDeck('SURVEY')" class="btn" style="background:#333; color:#fff;">測量機械デッキ</button>
-                <button onclick="loadDeck('CONSTRUCTION')" class="btn" style="background:#333; color:#fff;">重機土木デッキ</button>
+                <button onclick="loadDeck('PERSONNEL')" class="btn" style="background:#333; color:#fff;">人材育成</button>
+                <button onclick="loadDeck('EQUIPMENT')" class="btn" style="background:#333; color:#fff;">機材</button>
+                <button onclick="loadDeck('HEAVYMACHINE')" class="btn" style="background:#333; color:#fff;">重機系</button>
+                <button onclick="loadDeck('CONTROL')" class="btn" style="background:#333; color:#fff;">コントロール</button>
                 <button onclick="saveDeckToSlot()" class="btn btn-gold">デッキを保存</button>
                 <button onclick="backToTitle()" class="btn" style="background:#666; color:#fff;">戻る</button>
             </div>
@@ -960,63 +961,95 @@
 
         function loadDeck(mode) {
             const presets = {
-                // 社員育成デッキ：社員カードとTraining（研修）で強化していく戦略
-                TRAINING: [
-                    "Newbie","Newbie","Newbie","Newbie","Newbie","Newbie",  // 新入社員を大量投入
-                    "Staff","Staff","Staff","Staff",  // 進化先
-                    "Chief","Chief","Chief",  // 最終進化
-                    "Senior","Senior","Senior","Senior",  // 新入社員を強化
-                    "Ace","Ace","Ace",  // 現場のエース
-                    "Expert","Expert","Expert",  // ベテラン職人
-                    "Clerk","Clerk","Clerk","Clerk",  // 事務員でAP回復
-                    "SafetyOfficer","SafetyOfficer",  // 安全管理
-                    "Training","Training","Training",  // 研修で社員強化
-                    "Elite","Elite",  // 少数精鋭
-                    "Note","Note","Check","Check",  // ドロー
-                    "Repair","Repair","Overtime","Overtime",  // AP管理
-                    "Decision","Fund",  // 最大AP増加
-                    "Lost","Bush",  // 除去
-                    "Goal30","Goal30","GoalFinal","GoalFinal"  // 勝利条件
+                // 人材育成デッキ：人材カードと強化スペルで戦う
+                PERSONNEL: [
+                    "Newbie","Newbie","Newbie","Newbie",  // 新入社員
+                    "Staff","Staff","Staff","Staff",  // 担当社員
+                    "Chief","Chief","Chief",  // 主任技術者
+                    "Senior","Senior","Senior","Senior",  // 教育係
+                    "Ace","Ace","Ace",  // エース
+                    "Leader","Leader",  // 現場代理人
+                    "Expert","Expert",  // ベテラン職人
+                    "Clerk","Clerk","Clerk","Clerk",  // 事務員
+                    "SafetyOfficer","SafetyOfficer",  // 安全員
+                    "Helmet","Helmet","Helmet",  // ヘルメット（人材コスト-1）
+                    "Training","Training","Training",  // 手当（人材強化）
+                    "Dispatch","Dispatch",  // 人材派遣
+                    "Rehire","Rehire",  // 再雇用（墓地から人材回収）
+                    "Note","Note","Elite",  // ドロー
+                    "Repair","Overtime","Overtime",  // AP管理
+                    "Decision",  // 最大AP増加
+                    "Layoff",  // リストラ（相手人材破壊）
+                    "Goal30","Goal30","GoalFinal"  // 勝利条件
                 ],
                 
-                // 測量機械デッキ：測量機器の進化ラインを活かす正統派
-                SURVEY: [
-                    "LevelBasic","LevelBasic","LevelBasic","LevelBasic",  // レベル基本
-                    "LevelAuto","LevelAuto","LevelAuto","LevelAuto",  // オートレベル進化
-                    "StaffBasic","StaffBasic","StaffBasic","StaffBasic",  // スタッフ基本
-                    "StaffRef","StaffRef","StaffRef","StaffRef",  // 反射スタッフ進化
-                    "TS","TS","TS","TS",  // 光波トータルステーション
-                    "Drone","Drone","Drone","Drone",  // ドローン（霧に強い）
-                    "Laser","Laser","Laser",  // レーザー墨出し
-                    "Compass","Tripod","Tripod",  // 補助機材
-                    "GenSet","GenSet","GenSet",  // 発電機で全体強化
-                    "SmallTruck","SmallTruck",  // 軽トラで設置サポート
-                    "Note","Note","Check","Check",  // ドロー
-                    "Repair","Repair","Overtime","Overtime",  // AP管理
+                // 機材デッキ：測量機器の進化と機材サーチ
+                EQUIPMENT: [
+                    "LevelBasic","LevelBasic","LevelBasic","LevelBasic",  // レベル
+                    "LevelAuto","LevelAuto","LevelAuto",  // オートレベル
+                    "StaffBasic","StaffBasic","StaffBasic","StaffBasic",  // スタッフ
+                    "StaffRef","StaffRef","StaffRef",  // 反射スタッフ
+                    "TS","TS","TS","TS",  // 光波TS
+                    "Drone","Drone","Drone",  // ドローン
+                    "GNSS","GNSS",  // GNSS衛星
+                    "SurveyDB","SurveyDB",  // 測量データベース
+                    "GenSet","GenSet","GenSet",  // 発電機
+                    "Laser","Laser",  // レーザー
+                    "Tripod","Compass",  // 補助機材
+                    "EmergencyOrder","EmergencyOrder",  // 緊急発注（機材検索）
+                    "Recycle","Recycle",  // 機材リサイクル
+                    "Note","Note","Check",  // ドロー
+                    "Repair","Overtime","Overtime",  // AP管理
                     "Consult","Consult",  // 天候操作
-                    "Lost","Bush",  // 除去
-                    "Goal30","Goal30","GoalFinal","GoalFinal"  // 勝利条件
+                    "Demolition",  // 解体工事（相手機材破壊）
+                    "Goal30","Goal30","GoalFinal"  // 勝利条件
                 ],
                 
-                // 重機土木デッキ：大型重機とパワーで圧倒する
-                CONSTRUCTION: [
+                // 重機系デッキ：大型重機で高パワー勝負
+                HEAVYMACHINE: [
                     "Excavator","Excavator","Excavator","Excavator",  // バックホー
-                    "Rental","Rental","Rental",  // レンタル重機
-                    "Concrete","Concrete","Concrete","Concrete",  // 生コン車
-                    "Pump","Pump","Pump",  // 排水ポンプ（雨対策）
-                    "GNSS","GNSS","GNSS",  // GNSS衛星
+                    "Rental","Rental","Rental","Rental",  // レンタル重機
                     "Scanner","Scanner","Scanner",  // 3Dスキャナ
+                    "GNSS","GNSS","GNSS",  // GNSS衛星
+                    "Concrete","Concrete","Concrete",  // 生コン車
                     "UsedTS","UsedTS","UsedTS",  // 中古TS
+                    "Pump","Pump","Pump",  // 排水ポンプ
                     "GenSet","GenSet","GenSet",  // 発電機
                     "Lights","Lights","Lights",  // 投光器
                     "Intern","Intern","Intern",  // 実習生（囮）
-                    "Clerk","Clerk","Clerk",  // 事務員（AP回復）
-                    "Rush","Rush","Rush",  // 突貫工事
-                    "Note","Note","Elite",  // ドロー
-                    "NightWork","Repair","Overtime","Overtime",  // AP大量管理
+                    "Clerk","Clerk","Clerk",  // 事務員
+                    "EmergencyOrder",  // 緊急発注
+                    "Rush","Rush",  // 突貫工事
+                    "SiteFire",  // 現場火災（全破壊）
+                    "Note","Elite",  // ドロー
+                    "NightWork","Repair","Overtime",  // AP管理
                     "Decision","Fund",  // 最大AP増加
-                    "Lost","Bush",  // 除去
-                    "Goal30","Goal30","GoalFinal","GoalFinal"  // 勝利条件
+                    "Goal30","Goal30","GoalFinal"  // 勝利条件
+                ],
+                
+                // コントロールデッキ：破壊と墓地回収で持久戦
+                CONTROL: [
+                    "Newbie","Newbie","Newbie",  // 新入社員
+                    "Staff","Staff",  // 担当社員
+                    "LevelBasic","LevelBasic","LevelBasic",  // レベル
+                    "LevelAuto","LevelAuto",  // オートレベル
+                    "TS","TS","TS",  // 光波TS
+                    "Drone","Drone",  // ドローン
+                    "SurveyDB","SurveyDB",  // 測量データベース（毎ターンドロー）
+                    "Clerk","Clerk","Clerk",  // 事務員
+                    "Demolition","Demolition","Demolition",  // 解体工事（機材破壊）
+                    "Layoff","Layoff","Layoff",  // リストラ（人材破壊）
+                    "Restructure","Restructure",  // 人員整理（人材2破壊）
+                    "Removal","Removal",  // 設備撤去（機材2破壊）
+                    "Lost","Bush",  // 追加除去
+                    "Salvage","Salvage",  // サルベージ（墓地回収）
+                    "Recovery",  // 復旧作業（墓地2枚回収）
+                    "DataRestore",  // 記録復元（スペル回収）
+                    "BlueprintLoss","DataTheft",  // 手札破壊
+                    "Note","Check","Check",  // ドロー
+                    "Repair","Overtime",  // AP管理
+                    "Audit",  // 監査（相手最大AP減）
+                    "Goal30","Goal30","GoalFinal"  // 勝利条件
                 ]
             };
             myDeck = [...presets[mode]];
