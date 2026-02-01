@@ -306,19 +306,24 @@
         <div id="room-section" style="margin-top:40px; background:rgba(20, 30, 48, 0.9); padding:25px; border-radius:15px; max-width:500px; border:2px solid rgba(241, 196, 15, 0.4);">
             <h3 style="color:var(--gold); margin-top:0;">ゲームモード</h3>
             
+            <!-- デッキ管理ボタン -->
+            <div style="margin-bottom:25px;">
+                <button onclick="goToDeckManager()" class="btn" style="background:linear-gradient(135deg, #9b59b6, #8e44ad); color:#fff; font-size:20px; width:100%; padding:15px;">📋 デッキ編成</button>
+            </div>
+
             <!-- CPU戦ボタン -->
             <div style="margin-bottom:25px;">
-                <button onclick="startCPUGame()" class="btn" style="background:linear-gradient(135deg, #e67e22, #d35400); color:#fff; font-size:20px; width:100%; padding:15px;">🤖 CPU戦（練習モード）</button>
+                <button id="cpu-battle-btn" onclick="startCPUGame()" class="btn" style="background:linear-gradient(135deg, #e67e22, #d35400); color:#fff; font-size:20px; width:100%; padding:15px;">🤖 CPU戦（練習モード）</button>
             </div>
             
             <div style="border-top:2px solid rgba(241, 196, 15, 0.2); padding-top:20px;">
                 <h4 style="color:var(--cyan); margin-top:0;">オンライン対戦</h4>
                 <div style="display:flex; gap:15px; margin-bottom:20px;">
-                    <button onclick="createRoom()" class="btn" style="background:var(--green); color:#fff; font-size:18px; flex:1;">ルームを作成</button>
+                    <button id="online-create-btn" onclick="createRoom()" class="btn" style="background:var(--green); color:#fff; font-size:18px; flex:1;">ルームを作成</button>
                 </div>
                 <div style="display:flex; gap:10px;">
                     <input id="room-input" type="text" placeholder="4桁のルーム番号" maxlength="4" style="flex:1; padding:12px; font-size:16px; border-radius:8px; border:2px solid #444; background:#222; color:#fff; text-align:center;">
-                    <button onclick="joinRoomByInput()" class="btn" style="background:var(--cyan); color:#fff; font-size:18px;">参加</button>
+                    <button id="online-join-btn" onclick="joinRoomByInput()" class="btn" style="background:var(--cyan); color:#fff; font-size:18px;">参加</button>
                 </div>
                 <div id="room-status" style="margin-top:15px; text-align:center; color:var(--gold); font-size:14px; min-height:24px;"></div>
             </div>
@@ -347,10 +352,79 @@
                 <button onclick="loadDeck('TRAINING')" class="btn" style="background:#333; color:#fff;">社員育成デッキ</button>
                 <button onclick="loadDeck('SURVEY')" class="btn" style="background:#333; color:#fff;">測量機械デッキ</button>
                 <button onclick="loadDeck('CONSTRUCTION')" class="btn" style="background:#333; color:#fff;">重機土木デッキ</button>
-                <button onclick="submitDeck()" class="btn btn-gold">現場へ出撃！</button>
+                <button onclick="saveDeckToSlot()" class="btn btn-gold">デッキを保存</button>
+                <button onclick="backToTitle()" class="btn" style="background:#666; color:#fff;">戻る</button>
             </div>
         </div>
         <div id="deck-grid" style="display:grid; grid-template-columns:repeat(9, 1fr); gap:10px; height:80vh; overflow-y:auto; background:rgba(0,0,0,0.3); padding:15px; border-radius:10px;"></div>
+    </div>
+
+    <!-- デッキ管理画面 -->
+    <div id="screen-deck-manager" style="display:none; height:100vh; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px; box-sizing:border-box;">
+        <h1 style="color:var(--gold); font-size:48px; text-shadow: 0 0 20px var(--gold); margin:0 0 40px 0;">デッキ管理</h1>
+        
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:30px; max-width:1200px; width:100%;">
+            <!-- デッキスロット1 -->
+            <div class="deck-slot" style="background:rgba(20, 30, 48, 0.9); padding:30px; border-radius:15px; border:2px solid rgba(52, 152, 219, 0.4); cursor:pointer; transition:all 0.3s;" onclick="editDeckSlot(0)">
+                <h3 style="color:var(--cyan); margin-top:0;">デッキ 1</h3>
+                <p id="deck-slot-0-name" style="font-size:20px; color:#fff; margin:15px 0;">未編成</p>
+                <p id="deck-slot-0-count" style="color:#aaa; font-size:14px;">0 / 40 枚</p>
+                <button onclick="event.stopPropagation(); editDeckSlot(0)" class="btn" style="background:var(--blue); color:#fff; width:100%; margin-top:10px;">編集</button>
+                <button onclick="event.stopPropagation(); deleteDeckSlot(0)" class="btn" style="background:#e74c3c; color:#fff; width:100%; margin-top:10px;">削除</button>
+            </div>
+            
+            <!-- デッキスロット2 -->
+            <div class="deck-slot" style="background:rgba(20, 30, 48, 0.9); padding:30px; border-radius:15px; border:2px solid rgba(155, 89, 182, 0.4); cursor:pointer; transition:all 0.3s;" onclick="editDeckSlot(1)">
+                <h3 style="color:var(--purple); margin-top:0;">デッキ 2</h3>
+                <p id="deck-slot-1-name" style="font-size:20px; color:#fff; margin:15px 0;">未編成</p>
+                <p id="deck-slot-1-count" style="color:#aaa; font-size:14px;">0 / 40 枚</p>
+                <button onclick="event.stopPropagation(); editDeckSlot(1)" class="btn" style="background:var(--blue); color:#fff; width:100%; margin-top:10px;">編集</button>
+                <button onclick="event.stopPropagation(); deleteDeckSlot(1)" class="btn" style="background:#e74c3c; color:#fff; width:100%; margin-top:10px;">削除</button>
+            </div>
+            
+            <!-- デッキスロット3 -->
+            <div class="deck-slot" style="background:rgba(20, 30, 48, 0.9); padding:30px; border-radius:15px; border:2px solid rgba(46, 204, 113, 0.4); cursor:pointer; transition:all 0.3s;" onclick="editDeckSlot(2)">
+                <h3 style="color:var(--green); margin-top:0;">デッキ 3</h3>
+                <p id="deck-slot-2-name" style="font-size:20px; color:#fff; margin:15px 0;">未編成</p>
+                <p id="deck-slot-2-count" style="color:#aaa; font-size:14px;">0 / 40 枚</p>
+                <button onclick="event.stopPropagation(); editDeckSlot(2)" class="btn" style="background:var(--blue); color:#fff; width:100%; margin-top:10px;">編集</button>
+                <button onclick="event.stopPropagation(); deleteDeckSlot(2)" class="btn" style="background:#e74c3c; color:#fff; width:100%; margin-top:10px;">削除</button>
+            </div>
+        </div>
+        
+        <button onclick="backToTitleFromManager()" class="btn btn-gold" style="margin-top:40px; padding:15px 60px; font-size:20px;">タイトルに戻る</button>
+    </div>
+
+    <!-- デッキ選択画面 -->
+    <div id="screen-deck-select" style="display:none; height:100vh; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px; box-sizing:border-box;">
+        <h1 style="color:var(--gold); font-size:48px; text-shadow: 0 0 20px var(--gold); margin:0 0 20px 0;">デッキを選択</h1>
+        <p style="color:#aaa; font-size:18px; margin-bottom:40px;">対戦で使用するデッキを選んでください</p>
+        
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:30px; max-width:1200px; width:100%;">
+            <!-- デッキスロット1 -->
+            <div class="deck-select-slot" style="background:rgba(20, 30, 48, 0.9); padding:30px; border-radius:15px; border:2px solid rgba(52, 152, 219, 0.4); cursor:pointer; transition:all 0.3s;" onclick="selectDeckForBattle(0)">
+                <h3 style="color:var(--cyan); margin-top:0;">デッキ 1</h3>
+                <p id="deck-select-0-name" style="font-size:20px; color:#fff; margin:15px 0;">未編成</p>
+                <p id="deck-select-0-count" style="color:#aaa; font-size:14px;">0 / 40 枚</p>
+                <button onclick="event.stopPropagation(); selectDeckForBattle(0)" class="btn btn-gold" style="width:100%; margin-top:10px; font-size:18px;">このデッキで対戦</button>
+            </div>
+            
+            <!-- デッキスロット2 -->
+            <div class="deck-select-slot" style="background:rgba(20, 30, 48, 0.9); padding:30px; border-radius:15px; border:2px solid rgba(155, 89, 182, 0.4); cursor:pointer; transition:all 0.3s;" onclick="selectDeckForBattle(1)">
+                <h3 style="color:var(--purple); margin-top:0;">デッキ 2</h3>
+                <p id="deck-select-1-name" style="font-size:20px; color:#fff; margin:15px 0;">未編成</p>
+                <p id="deck-select-1-count" style="color:#aaa; font-size:14px;">0 / 40 枚</p>
+                <button onclick="event.stopPropagation(); selectDeckForBattle(1)" class="btn btn-gold" style="width:100%; margin-top:10px; font-size:18px;">このデッキで対戦</button>
+            </div>
+            
+            <!-- デッキスロット3 -->
+            <div class="deck-select-slot" style="background:rgba(20, 30, 48, 0.9); padding:30px; border-radius:15px; border:2px solid rgba(46, 204, 113, 0.4); cursor:pointer; transition:all 0.3s;" onclick="selectDeckForBattle(2)">
+                <h3 style="color:var(--green); margin-top:0;">デッキ 3</h3>
+                <p id="deck-select-2-name" style="font-size:20px; color:#fff; margin:15px 0;">未編成</p>
+                <p id="deck-select-2-count" style="color:#aaa; font-size:14px;">0 / 40 枚</p>
+                <button onclick="event.stopPropagation(); selectDeckForBattle(2)" class="btn btn-gold" style="width:100%; margin-top:10px; font-size:18px;">このデッキで対戦</button>
+            </div>
+        </div>
     </div>
 
     <div id="screen-battle">
@@ -380,7 +454,210 @@
         const socket = io();
         let myId, myDeck = [];
         let lastTurn = null;
-        let currentRoomId = null;        let isCPUMode = false;  // CPU戦モード
+        let currentRoomId = null;
+        let isCPUMode = false;  // CPU戦モード
+        let currentEditingSlot = null;  // 現在編集中のデッキスロット
+        let savedDecks = [null, null, null];  // 3つのデッキスロット
+        
+        // ページ読み込み時にlocalStorageからデータを復元
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDecksFromStorage();
+            updateDeckManagerUI();
+            checkDeckAvailability();
+        });
+        
+        // localStorageからデッキデータを読み込み
+        function loadDecksFromStorage() {
+            const stored = localStorage.getItem('atakamovs_decks');
+            if (stored) {
+                try {
+                    savedDecks = JSON.parse(stored);
+                } catch (e) {
+                    console.error('デッキデータの読み込みに失敗:', e);
+                    savedDecks = [null, null, null];
+                }
+            }
+        }
+        
+        // localStorageにデッキデータを保存
+        function saveDecksToStorage() {
+            localStorage.setItem('atakamovs_decks', JSON.stringify(savedDecks));
+        }
+        
+        // デッキ管理UIの更新
+        function updateDeckManagerUI() {
+            for (let i = 0; i < 3; i++) {
+                const deck = savedDecks[i];
+                const nameEl = document.getElementById(`deck-slot-${i}-name`);
+                const countEl = document.getElementById(`deck-slot-${i}-count`);
+                const selectNameEl = document.getElementById(`deck-select-${i}-name`);
+                const selectCountEl = document.getElementById(`deck-select-${i}-count`);
+                
+                if (deck && deck.cards && deck.cards.length === 40) {
+                    const deckName = deck.name || `デッキ ${i + 1}`;
+                    if (nameEl) nameEl.textContent = deckName;
+                    if (countEl) countEl.textContent = `${deck.cards.length} / 40 枚`;
+                    if (selectNameEl) selectNameEl.textContent = deckName;
+                    if (selectCountEl) selectCountEl.textContent = `${deck.cards.length} / 40 枚`;
+                } else {
+                    if (nameEl) nameEl.textContent = '未編成';
+                    if (countEl) countEl.textContent = '0 / 40 枚';
+                    if (selectNameEl) selectNameEl.textContent = '未編成';
+                    if (selectCountEl) selectCountEl.textContent = '0 / 40 枚';
+                }
+            }
+        }
+        
+        // デッキが1つでも完成しているかチェック
+        function checkDeckAvailability() {
+            const hasValidDeck = savedDecks.some(deck => deck && deck.cards && deck.cards.length === 40);
+            
+            // 対戦ボタンの有効/無効を設定
+            const cpuBtn = document.getElementById('cpu-battle-btn');
+            const onlineCreateBtn = document.getElementById('online-create-btn');
+            const onlineJoinBtn = document.getElementById('online-join-btn');
+            
+            if (cpuBtn) {
+                cpuBtn.disabled = !hasValidDeck;
+                cpuBtn.style.opacity = hasValidDeck ? '1' : '0.5';
+                cpuBtn.style.cursor = hasValidDeck ? 'pointer' : 'not-allowed';
+            }
+            if (onlineCreateBtn) {
+                onlineCreateBtn.disabled = !hasValidDeck;
+                onlineCreateBtn.style.opacity = hasValidDeck ? '1' : '0.5';
+                onlineCreateBtn.style.cursor = hasValidDeck ? 'pointer' : 'not-allowed';
+            }
+            if (onlineJoinBtn) {
+                onlineJoinBtn.disabled = !hasValidDeck;
+                onlineJoinBtn.style.opacity = hasValidDeck ? '1' : '0.5';
+                onlineJoinBtn.style.cursor = hasValidDeck ? 'pointer' : 'not-allowed';
+            }
+            
+            return hasValidDeck;
+        }
+        
+        // デッキ管理画面に移動
+        function goToDeckManager() {
+            document.getElementById('screen-title').style.display = 'none';
+            document.getElementById('screen-deck-manager').style.display = 'flex';
+            updateDeckManagerUI();
+        }
+        
+        // デッキスロットの編集
+        function editDeckSlot(slotIndex) {
+            currentEditingSlot = slotIndex;
+            const deck = savedDecks[slotIndex];
+            
+            // 既存のデッキがあれば読み込む
+            if (deck && deck.cards) {
+                myDeck = [...deck.cards];
+            } else {
+                myDeck = [];
+            }
+            
+            document.getElementById('screen-deck-manager').style.display = 'none';
+            document.getElementById('screen-deck').style.display = 'block';
+            document.getElementById('deck-count').innerText = myDeck.length;
+            renderDeckGrid();
+        }
+        
+        // デッキスロットの削除
+        function deleteDeckSlot(slotIndex) {
+            if (confirm(`デッキ ${slotIndex + 1} を削除しますか？`)) {
+                savedDecks[slotIndex] = null;
+                saveDecksToStorage();
+                updateDeckManagerUI();
+                checkDeckAvailability();
+            }
+        }
+        
+        // デッキを現在のスロットに保存
+        function saveDeckToSlot() {
+            if (myDeck.length !== 40) {
+                alert('デッキは40枚である必要があります！');
+                return;
+            }
+            
+            const deckName = prompt('デッキ名を入力してください:', `デッキ ${currentEditingSlot + 1}`);
+            if (deckName === null) return;  // キャンセル
+            
+            savedDecks[currentEditingSlot] = {
+                name: deckName || `デッキ ${currentEditingSlot + 1}`,
+                cards: [...myDeck]
+            };
+            
+            saveDecksToStorage();
+            alert('デッキを保存しました！');
+            
+            // デッキ管理画面に戻る
+            document.getElementById('screen-deck').style.display = 'none';
+            document.getElementById('screen-deck-manager').style.display = 'flex';
+            updateDeckManagerUI();
+            checkDeckAvailability();
+        }
+        
+        // デッキ管理画面からタイトルに戻る
+        function backToTitleFromManager() {
+            document.getElementById('screen-deck-manager').style.display = 'none';
+            document.getElementById('screen-title').style.display = 'flex';
+            checkDeckAvailability();
+        }
+        
+        // デッキ編集画面からタイトルに戻る
+        function backToTitle() {
+            // 編集中の場合は確認
+            if (currentEditingSlot !== null) {
+                if (confirm('編集を中断してデッキ管理に戻りますか？')) {
+                    document.getElementById('screen-deck').style.display = 'none';
+                    document.getElementById('screen-deck-manager').style.display = 'flex';
+                    currentEditingSlot = null;
+                }
+            } else {
+                document.getElementById('screen-deck').style.display = 'none';
+                document.getElementById('screen-title').style.display = 'flex';
+            }
+        }
+        
+        // デッキ選択画面でデッキを選択
+        function selectDeckForBattle(slotIndex) {
+            const deck = savedDecks[slotIndex];
+            if (!deck || !deck.cards || deck.cards.length !== 40) {
+                alert('このデッキは使用できません。デッキを編成してください。');
+                return;
+            }
+            
+            myDeck = [...deck.cards];
+            
+            // デッキを提出
+            socket.emit('submit_deck', {player_id: myId, deck: myDeck});
+            
+            // CPU戦モード：CPUのデッキも自動提出
+            if (isCPUMode) {
+                const cpuDeck = [
+                    "LevelBasic","LevelBasic","LevelBasic",
+                    "LevelAuto","LevelAuto","LevelAuto",
+                    "StaffBasic","StaffBasic","StaffBasic",
+                    "StaffRef","StaffRef","StaffRef",
+                    "TS","TS","TS","TS",
+                    "Drone","Drone","Drone",
+                    "Laser","Laser",
+                    "Compass","Tripod","Tripod",
+                    "GenSet","GenSet",
+                    "SmallTruck","SmallTruck",
+                    "Note","Note","Check","Check",
+                    "Repair","Repair","Overtime",
+                    "Consult","Consult",
+                    "Lost","Boundary",
+                    "Goal30","Goal30","GoalFinal","GoalFinal"
+                ];
+                setTimeout(() => {
+                    socket.emit('submit_deck', {player_id: 'p2', deck: cpuDeck});
+                }, 500);
+            }
+            
+            document.getElementById('screen-deck-select').style.display = 'none';
+            document.getElementById('screen-battle').style.display = 'grid';
+        }
         
         // しゃかぱち：手札を反転させる
         function shuffleHand() {
@@ -409,22 +686,34 @@
 
         // CPU戦開始
         function startCPUGame() {
+            if (!checkDeckAvailability()) {
+                alert('対戦するには、最低1つのデッキを編成してください！');
+                return;
+            }
+            
             isCPUMode = true;
             console.log('CPU戦モード開始:', isCPUMode);
-            document.getElementById('screen-title').style.display = 'none';
-            document.getElementById('screen-deck').style.display = 'block';
-            renderDeckGrid();
             
             // ルームを作成（バックグラウンドで）
             socket.emit('create_room');
         }
+        
         // ルーム作成
         function createRoom() {
+            if (!checkDeckAvailability()) {
+                alert('対戦するには、最低1つのデッキを編成してください！');
+                return;
+            }
             socket.emit('create_room');
         }
 
         // ルーム参加（入力から）
         function joinRoomByInput() {
+            if (!checkDeckAvailability()) {
+                alert('対戦するには、最低1つのデッキを編成してください！');
+                return;
+            }
+            
             const roomId = document.getElementById('room-input').value.trim();
             if (roomId.length !== 4) {
                 document.getElementById('room-status').textContent = '4桁のルーム番号を入力してください';
@@ -439,8 +728,12 @@
             myId = data.player_id;  // P1として自動割り当て
             console.log('ルーム作成:', currentRoomId, 'CPU戦モード:', isCPUMode);
             
-            // CPU戦モードの場合は何もしない（既にデッキ編成画面に行っている）
-            if (!isCPUMode) {
+            // CPU戦モードの場合はデッキ選択画面へ
+            if (isCPUMode) {
+                document.getElementById('screen-title').style.display = 'none';
+                document.getElementById('screen-deck-select').style.display = 'flex';
+                updateDeckManagerUI();
+            } else {
                 // 通常モード：待機画面へ
                 document.getElementById('screen-title').style.display = 'none';
                 document.getElementById('screen-waiting').style.display = 'flex';
@@ -452,15 +745,15 @@
         socket.on('room_joined', (data) => {
             currentRoomId = data.room_id;
             myId = data.player_id;  // P2として自動割り当て
-            // P2は待機せず直接デッキ編成へ（room_readyで遷移）
+            // P2は待機せず直接デッキ選択画面へ（room_readyで遷移）
         });
 
         // 2人揃った通知
         socket.on('room_ready', (data) => {
             document.getElementById('screen-title').style.display = 'none';
             document.getElementById('screen-waiting').style.display = 'none';
-            document.getElementById('screen-deck').style.display = 'block';
-            renderDeckGrid();
+            document.getElementById('screen-deck-select').style.display = 'flex';
+            updateDeckManagerUI();
         });
 
         // エラー処理
@@ -673,44 +966,6 @@
             myDeck = [...presets[mode]];
             document.getElementById('deck-count').innerText = myDeck.length;
             renderDeckGrid();
-        }
-
-        function submitDeck() {
-            if(myDeck.length < 40) return alert("40枚選んでください！");
-            socket.emit('submit_deck', {player_id: myId, deck: myDeck});
-            
-            // CPU戦モード：CPUのデッキも自動提出
-            if (isCPUMode) {
-                // CPUは測量機械デッキを使用
-                const cpuDeck = [
-                    "LevelBasic","LevelBasic","LevelBasic",
-                    "LevelAuto","LevelAuto","LevelAuto",
-                    "StaffBasic","StaffBasic","StaffBasic",
-                    "StaffRef","StaffRef","StaffRef",
-                    "TS","TS","TS","TS",
-                    "Drone","Drone","Drone",
-                    "Laser","Laser",
-                    "Compass","Tripod","Tripod",
-                    "GenSet","GenSet",
-                    "SmallTruck","SmallTruck",
-                    "Note","Note","Check","Check",
-                    "Repair","Repair","Overtime",
-                    "Consult","Consult",
-                    "Lost","Boundary",
-                    "Goal30","Goal30","GoalFinal","GoalFinal"
-                ];
-                setTimeout(() => {
-                    socket.emit('submit_deck', {player_id: 'p2', deck: cpuDeck});
-                }, 500);
-            }
-            
-            document.getElementById('screen-deck').style.display = 'none';
-            document.getElementById('screen-battle').style.display = 'grid';
-        }
-
-        function backToTitle() {
-            socket.emit('reset_game');
-            setTimeout(() => { location.reload(); }, 100);
         }
         
         // CPU思考ロジック
