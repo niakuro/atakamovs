@@ -70,6 +70,33 @@
             border-color: var(--gold); 
             box-shadow: 0 10px 30px rgba(255,223,0,0.4), 0 0 20px rgba(255,223,0,0.2);
         }
+        
+        /* 裏向きカード */
+        .card-back {
+            width: 70px; height: 100px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border-radius: 8px;
+            border: 3px solid var(--gold);
+            position: relative;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-back::before {
+            content: '🎴';
+            font-size: 40px;
+            opacity: 0.8;
+        }
+        .card-back::after {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            border: 2px solid rgba(255, 223, 0, 0.3);
+            border-radius: 4px;
+        }
+        
         .card.MACHINE { 
             border-top: 6px solid var(--blue); 
             background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%);
@@ -430,6 +457,7 @@
     <div id="screen-battle">
         <div id="turn-indicator" style="grid-column:1/-1; text-align:center; padding:10px; font-weight:bold; letter-spacing:10px; background:#222;">WAITING...</div>
         <div style="display:flex; flex-direction:column; justify-content:space-between; height:calc(100vh - 45px);">
+            <div id="opp-hand" style="display:flex; justify-content:center; gap:8px; padding:15px; background:rgba(0,0,0,0.4); min-height:120px;"></div>
             <div id="opp-field" class="field"></div>
             <div id="my-field" class="field"></div>
             <div id="my-hand" style="display:flex; justify-content:center; gap:8px; padding:20px; background:rgba(0,0,0,0.6); min-height:170px;"></div>
@@ -458,6 +486,7 @@
         let isCPUMode = false;  // CPU戦モード
         let currentEditingSlot = null;  // 現在編集中のデッキスロット
         let savedDecks = [null, null, null];  // 3つのデッキスロット
+        let shakapachiCount = {p1: 0, p2: 0};  // しゃかぱちカウント
         
         // ページ読み込み時にlocalStorageからデータを復元
         window.addEventListener('DOMContentLoaded', () => {
@@ -682,6 +711,9 @@
                     handContainer.appendChild(card);
                 });
             }, 500);
+            
+            // サーバーにしゃかぱちを通知
+            socket.emit('shakapachi', {player_id: myId, room_id: currentRoomId});
         }
 
         // CPU戦開始
@@ -759,6 +791,12 @@
         // エラー処理
         socket.on('error', (data) => {
             document.getElementById('room-status').textContent = data.message;
+        });
+
+        // しゃかぱちイベントを受信
+        socket.on('opponent_shakapachi', (data) => {
+            // 相手がしゃかぱちした時のアニメーション
+            animateOpponentHand();
         });
 
         // Pixabay APIで現場風の実写背景を取得（無料、APIキー不要）
@@ -1028,6 +1066,31 @@
             socket.emit('select_target', {player_id: myId, target_index: idx});
         }
         
+        // 相手の手札をアニメーション
+        function animateOpponentHand() {
+            const handContainer = document.getElementById('opp-hand');
+            const cards = Array.from(handContainer.children);
+            
+            // カードにアニメーションを追加
+            cards.forEach((card, i) => {
+                const targetPos = cards.length - 1 - i;
+                const offset = (targetPos - i) * 78; // カードの幅+gap
+                card.style.transition = 'transform 0.5s ease';
+                card.style.transform = `translateX(${offset}px)`;
+            });
+            
+            // アニメーション終了後に実際に順序を変更
+            setTimeout(() => {
+                cards.reverse();
+                handContainer.innerHTML = '';
+                cards.forEach(card => {
+                    card.style.transform = '';
+                    card.style.transition = '';
+                    handContainer.appendChild(card);
+                });
+            }, 500);
+        }
+        
         // CPU用の選択処理
         function cpuSelectTarget(gameState) {
             if (!gameState.pending_selection || gameState.pending_selection.player !== 'p2') return;
@@ -1115,6 +1178,11 @@
             }
             
             document.getElementById('my-hand').innerHTML = me.hand.map((c, i) => render(c, i, !isSelectMode, false)).join('');
+            
+            // 相手の手札（裏向きカード）
+            document.getElementById('opp-hand').innerHTML = opp.hand.map(() => 
+                '<div class="card-back"></div>'
+            ).join('');
             
             // 自分のフィールド（buff_ally, sacrifice系の選択対象）
             const myFieldSelectable = isSelectMode && ['buff_ally', 'sacrifice_for_upkeep', 'sacrifice_for_rush'].includes(selectType);

@@ -97,6 +97,7 @@ class GameInstance:
         self.winner = None
         self.log = ["観測吝VS ULTIMATE Ver 4.1 開始！"]
         self.pending_selection = None  # {"type": "...", "player": "...", "targets": [...], "card_played": {...}}
+        self.shakapachi_count = {"p1": 0, "p2": 0}  # しゃかぱちカウント
 
 # グローバルなgameインスタンスは削除（ルーム管理に移行）
 
@@ -153,6 +154,30 @@ def handle_reset():
         return
     rooms[room_id].reset()
     emit('update_ui', vars(rooms[room_id]), room=room_id)
+
+@socketio.on('shakapachi')
+def handle_shakapachi(data):
+    room_id = get_player_room(request.sid)
+    if not room_id or room_id not in rooms:
+        return
+    game = rooms[room_id]
+    
+    pid = data['player_id']
+    game.shakapachi_count[pid] += 1
+    count = game.shakapachi_count[pid]
+    
+    # ログに追加
+    player_name = "P1" if pid == "p1" else "P2"
+    game.log.append(f"{player_name}しゃかぱち{count}回目")
+    
+    # 相手に通知
+    opponent_pid = "p2" if pid == "p1" else "p1"
+    opponent_sid = room_players[room_id][opponent_pid]
+    if opponent_sid:
+        emit('opponent_shakapachi', {'player_id': pid, 'count': count}, room=opponent_sid)
+    
+    # 全員にUIアップデート
+    emit('update_ui', vars(game), room=room_id)
 
 @socketio.on('submit_deck')
 def handle_deck(data):
