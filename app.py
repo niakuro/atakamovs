@@ -22,41 +22,41 @@ room_players = {}  # {room_id: {'p1': sid, 'p2': sid}} ルームごとのプレ�
 
 # --- 55種類のカードデータベース ---
 CARD_DB = [
-    {"id": "Newbie", "name": "新入社員", "cost": 1, "power": 1, "type": "MACHINE", "upkeep": 0, "desc": "【登場時】1枚引く。"},
-    {"id": "Staff", "name": "担当社員", "cost": 3, "power": 4, "type": "MACHINE", "upkeep": 1, "desc": "新入社員から進化(1)。"},
-    {"id": "Chief", "name": "主任技術者", "cost": 5, "power": 8, "type": "MACHINE", "upkeep": 0, "desc": "担当社員から進化(1)。維持費0。"},
-    {"id": "Senior", "name": "教育係の先輩", "cost": 2, "power": 3, "type": "MACHINE", "upkeep": 1, "desc": "新入社員のパワー+3。"},
-    {"id": "Ace", "name": "現場のエース", "cost": 4, "power": 12, "type": "MACHINE", "upkeep": 2, "desc": "高出力な現場員。"},
-    {"id": "Leader", "name": "現場代理人", "cost": 6, "power": 15, "type": "MACHINE", "upkeep": 1, "desc": "パワーが高いが低維持費。"},
-    {"id": "Expert", "name": "ベテラン職人", "cost": 5, "power": 10, "type": "MACHINE", "upkeep": 2, "desc": "安定した計測値。"},
-    {"id": "Clerk", "name": "事務員", "cost": 2, "power": 1, "type": "MACHINE", "upkeep": 0, "desc": "毎ターンAP+1回復。"},
-    {"id": "Intern", "name": "実習生", "cost": 0, "power": 0, "type": "MACHINE", "upkeep": 0, "desc": "コスト0の囮。"},
-    {"id": "SafetyOfficer", "name": "安全管理員", "cost": 3, "power": 2, "type": "MACHINE", "upkeep": 1, "desc": "現場の守り神。"},
-    {"id": "LevelBasic", "name": "普通のレベル", "cost": 1, "power": 2, "type": "MACHINE", "upkeep": 1, "desc": "基本機材。"},
-    {"id": "LevelAuto", "name": "オートレベル", "cost": 3, "power": 6, "type": "MACHINE", "upkeep": 1, "desc": "普通レベルから進化(1)。"},
-    {"id": "StaffBasic", "name": "アルミスタッフ", "cost": 1, "power": 2, "type": "MACHINE", "upkeep": 1, "desc": "基本スタッフ。"},
-    {"id": "StaffRef", "name": "反射スタッフ", "cost": 3, "power": 7, "type": "MACHINE", "upkeep": 1, "desc": "アルミから進化(1)。"},
-    {"id": "TS", "name": "光波TS", "cost": 4, "power": 10, "type": "MACHINE", "upkeep": 2, "desc": "主力機材。"},
-    {"id": "GNSS", "name": "GNSS衛星", "cost": 6, "power": 18, "type": "MACHINE", "upkeep": 3, "desc": "晴天時パワー+5。"},
-    {"id": "Drone", "name": "UAVドローン", "cost": 5, "power": 14, "type": "MACHINE", "upkeep": 2, "desc": "濃霧の影響を受けない。"},
-    {"id": "Scanner", "name": "3Dスキャナ", "cost": 8, "power": 25, "type": "MACHINE", "upkeep": 3, "desc": "最高クラスの出力。"},
-    {"id": "UsedTS", "name": "中古のTS", "cost": 2, "power": 12, "type": "MACHINE", "upkeep": 2, "desc": "安価だが維持費がかさむ。"},
-    {"id": "Laser", "name": "レーザー墨出し", "cost": 2, "power": 5, "type": "MACHINE", "upkeep": 1, "desc": "室内で真価を発揮。"},
-    {"id": "Compass", "name": "コンパス", "cost": 1, "power": 1, "type": "MACHINE", "upkeep": 0, "desc": "方位を計測。"},
-    {"id": "Tripod", "name": "三脚", "cost": 1, "power": 1, "type": "MACHINE", "upkeep": 0, "desc": "機材の土台。"},
-    {"id": "Caliper", "name": "ノギス", "cost": 1, "power": 2, "type": "MACHINE", "upkeep": 1, "desc": "精密計測。"},
-    {"id": "Scale", "name": "スケール", "cost": 1, "power": 1, "type": "MACHINE", "upkeep": 0, "desc": "基本。"},
-    {"id": "Chalk", "name": "チョーク", "cost": 1, "power": 1, "type": "MACHINE", "upkeep": 0, "desc": "マーキング用。"},
-    {"id": "Excavator", "name": "バックホー", "cost": 7, "power": 20, "type": "MACHINE", "upkeep": 4, "desc": "圧倒的パワー。"},
-    {"id": "Rental", "name": "レンタル重機", "cost": 3, "power": 15, "type": "MACHINE", "upkeep": 5, "desc": "維持費が非常に高い。"},
-    {"id": "SmallTruck", "name": "軽トラ", "cost": 2, "power": 1, "type": "MACHINE", "upkeep": 0, "desc": "設置をスムーズにする。"},
-    {"id": "Concrete", "name": "生コン車", "cost": 5, "power": 10, "type": "MACHINE", "upkeep": 3, "desc": "雨天時パワー-5。"},
-    {"id": "Pump", "name": "排水ポンプ", "cost": 3, "power": 0, "type": "MACHINE", "upkeep": 1, "desc": "豪雨のマイナスを無効化。"},
-    {"id": "GenSet", "name": "発電機", "cost": 3, "power": 3, "type": "MACHINE", "upkeep": 1, "desc": "他機材のパワー+2。"},
-    {"id": "Radio", "name": "無線機", "cost": 2, "power": 2, "type": "MACHINE", "upkeep": 1, "desc": "ドローンを強化。"},
-    {"id": "Lights", "name": "投光器", "cost": 3, "power": 4, "type": "MACHINE", "upkeep": 1, "desc": "後半でパワーアップ。"},
-    {"id": "Helmet", "name": "ヘルメット", "cost": 1, "power": 0, "type": "MACHINE", "upkeep": 0, "desc": "社員コストを軽減。"},
-    {"id": "Barrier", "name": "工事看板", "cost": 2, "power": 0, "type": "MACHINE", "upkeep": 1, "desc": "相手の行動を抑制。"},
+    {"id": "Newbie", "name": "新入社員", "cost": 1, "power": 1, "type": "MACHINE", "category": "人材", "upkeep": 0, "desc": "【登場時】1枚引く。"},
+    {"id": "Staff", "name": "担当社員", "cost": 3, "power": 4, "type": "MACHINE", "category": "人材", "upkeep": 1, "desc": "新入社員から進化(1)。"},
+    {"id": "Chief", "name": "主任技術者", "cost": 5, "power": 8, "type": "MACHINE", "category": "人材", "upkeep": 0, "desc": "担当社員から進化(1)。維持費0。"},
+    {"id": "Senior", "name": "教育係の先輩", "cost": 2, "power": 3, "type": "MACHINE", "category": "人材", "upkeep": 1, "desc": "新入社員のパワー+3。"},
+    {"id": "Ace", "name": "現場のエース", "cost": 4, "power": 12, "type": "MACHINE", "category": "人材", "upkeep": 2, "desc": "高出力な現場員。"},
+    {"id": "Leader", "name": "現場代理人", "cost": 6, "power": 15, "type": "MACHINE", "category": "人材", "upkeep": 1, "desc": "パワーが高いが低維持費。"},
+    {"id": "Expert", "name": "ベテラン職人", "cost": 5, "power": 10, "type": "MACHINE", "category": "人材", "upkeep": 2, "desc": "安定した計測値。"},
+    {"id": "Clerk", "name": "事務員", "cost": 2, "power": 1, "type": "MACHINE", "category": "人材", "upkeep": 0, "desc": "毎ターンAP+1回復。"},
+    {"id": "Intern", "name": "実習生", "cost": 0, "power": 0, "type": "MACHINE", "category": "人材", "upkeep": 0, "desc": "コスト0の囮。"},
+    {"id": "SafetyOfficer", "name": "安全管理員", "cost": 3, "power": 2, "type": "MACHINE", "category": "人材", "upkeep": 1, "desc": "現場の守り神。"},
+    {"id": "LevelBasic", "name": "普通のレベル", "cost": 1, "power": 2, "type": "MACHINE", "category": "機材", "upkeep": 1, "desc": "基本機材。"},
+    {"id": "LevelAuto", "name": "オートレベル", "cost": 3, "power": 6, "type": "MACHINE", "category": "機材", "upkeep": 1, "desc": "普通レベルから進化(1)。"},
+    {"id": "StaffBasic", "name": "アルミスタッフ", "cost": 1, "power": 2, "type": "MACHINE", "category": "機材", "upkeep": 1, "desc": "基本スタッフ。"},
+    {"id": "StaffRef", "name": "反射スタッフ", "cost": 3, "power": 7, "type": "MACHINE", "category": "機材", "upkeep": 1, "desc": "アルミから進化(1)。"},
+    {"id": "TS", "name": "光波TS", "cost": 4, "power": 10, "type": "MACHINE", "category": "機材", "upkeep": 2, "desc": "主力機材。"},
+    {"id": "GNSS", "name": "GNSS衛星", "cost": 6, "power": 18, "type": "MACHINE", "category": "機材", "upkeep": 3, "desc": "晴天時パワー+5。"},
+    {"id": "Drone", "name": "UAVドローン", "cost": 5, "power": 14, "type": "MACHINE", "category": "機材", "upkeep": 2, "desc": "濃霧の影響を受けない。"},
+    {"id": "Scanner", "name": "3Dスキャナ", "cost": 8, "power": 25, "type": "MACHINE", "category": "機材", "upkeep": 3, "desc": "最高クラスの出力。"},
+    {"id": "UsedTS", "name": "中古のTS", "cost": 2, "power": 12, "type": "MACHINE", "category": "機材", "upkeep": 2, "desc": "安価だが維持費がかさむ。"},
+    {"id": "Laser", "name": "レーザー墨出し", "cost": 2, "power": 5, "type": "MACHINE", "category": "機材", "upkeep": 1, "desc": "室内で真価を発揮。"},
+    {"id": "Compass", "name": "コンパス", "cost": 1, "power": 1, "type": "MACHINE", "category": "機材", "upkeep": 0, "desc": "方位を計測。"},
+    {"id": "Tripod", "name": "三脚", "cost": 1, "power": 1, "type": "MACHINE", "category": "機材", "upkeep": 0, "desc": "機材の土台。"},
+    {"id": "Caliper", "name": "ノギス", "cost": 1, "power": 2, "type": "MACHINE", "category": "機材", "upkeep": 1, "desc": "精密計測。"},
+    {"id": "Scale", "name": "スケール", "cost": 1, "power": 1, "type": "MACHINE", "category": "機材", "upkeep": 0, "desc": "基本。"},
+    {"id": "Chalk", "name": "チョーク", "cost": 1, "power": 1, "type": "MACHINE", "category": "機材", "upkeep": 0, "desc": "マーキング用。"},
+    {"id": "Excavator", "name": "バックホー", "cost": 7, "power": 20, "type": "MACHINE", "category": "機材", "upkeep": 4, "desc": "圧倒的パワー。"},
+    {"id": "Rental", "name": "レンタル重機", "cost": 3, "power": 15, "type": "MACHINE", "category": "機材", "upkeep": 5, "desc": "維持費が非常に高い。"},
+    {"id": "SmallTruck", "name": "軽トラ", "cost": 2, "power": 1, "type": "MACHINE", "category": "機材", "upkeep": 0, "desc": "設置をスムーズにする。"},
+    {"id": "Concrete", "name": "生コン車", "cost": 5, "power": 10, "type": "MACHINE", "category": "機材", "upkeep": 3, "desc": "雨天時パワー-5。"},
+    {"id": "Pump", "name": "排水ポンプ", "cost": 3, "power": 0, "type": "MACHINE", "category": "機材", "upkeep": 1, "desc": "豪雨のマイナスを無効化。"},
+    {"id": "GenSet", "name": "発電機", "cost": 3, "power": 3, "type": "MACHINE", "category": "機材", "upkeep": 1, "desc": "他機材のパワー+2。"},
+    {"id": "Radio", "name": "無線機", "cost": 2, "power": 2, "type": "MACHINE", "category": "機材", "upkeep": 1, "desc": "ドローンを強化。"},
+    {"id": "Lights", "name": "投光器", "cost": 3, "power": 4, "type": "MACHINE", "category": "機材", "upkeep": 1, "desc": "後半でパワーアップ。"},
+    {"id": "Helmet", "name": "ヘルメット", "cost": 1, "power": 0, "type": "MACHINE", "category": "機材", "upkeep": 0, "desc": "人材コストを軽減。"},
+    {"id": "Barrier", "name": "工事看板", "cost": 2, "power": 0, "type": "MACHINE", "category": "機材", "upkeep": 1, "desc": "相手の行動を抑制。"},
     {"id": "Elite", "name": "少数精鋭", "cost": 2, "power": 0, "type": "SPELL", "desc": "最大AP-1。2枚引く。"},
     {"id": "Decision", "name": "苦渋の決断", "cost": 0, "power": 0, "type": "SPELL", "desc": "手札から強カードを捨て最大AP+2。"},
     {"id": "Fund", "name": "資金調達", "cost": 4, "power": 0, "type": "SPELL", "desc": "永久に最大AP+1。"},
@@ -75,6 +75,24 @@ CARD_DB = [
     {"id": "Boundary", "name": "境界未確定", "cost": 2, "power": 0, "type": "SPELL", "desc": "相手の機材1つを2ターン停止。"},
     {"id": "Overtime", "name": "残業指示", "cost": 0, "power": 0, "type": "SPELL", "desc": "1枚引いてAP+2。"},
     {"id": "Audit", "name": "会計検査", "cost": 4, "power": 0, "type": "SPELL", "desc": "相手の最大APを2削る。"},
+    {"id": "BlueprintLoss", "name": "図面紛失", "cost": 3, "power": 0, "type": "SPELL", "desc": "相手の手札を見て1枚捨てさせる。"},
+    {"id": "DataTheft", "name": "データ盗用", "cost": 2, "power": 0, "type": "SPELL", "desc": "相手の手札をランダムに1枚捨てさせる。"},
+    {"id": "AllOrNothing", "name": "一か八か", "cost": 0, "power": 0, "type": "SPELL", "desc": "コイントス。表なら5枚引く、裏なら手札全捨て＋場の機材1つランダム破壊。"},
+    {"id": "Recycle", "name": "機材リサイクル", "cost": 2, "power": 0, "type": "SPELL", "desc": "破壊された機材1つを手札に戻す。"},
+    {"id": "SurveyPlan", "name": "測量計画", "cost": 1, "power": 0, "type": "SPELL", "desc": "山札から3枚見て1枚を山札の一番上、残りを山札の一番下に。"},
+    {"id": "EmergencyOrder", "name": "緊急発注", "cost": 3, "power": 0, "type": "SPELL", "desc": "デッキから機材を1枚サーチして手札に。"},
+    {"id": "Dispatch", "name": "人材派遣", "cost": 2, "power": 0, "type": "SPELL", "desc": "デッキから社員を1枚サーチして手札に。"},
+    {"id": "FullyPrepared", "name": "準備万端", "cost": 5, "power": 0, "type": "SPELL", "desc": "場に異なる5種類のカードがあれば使用可。山札から勝利カードをサーチ。"},
+    {"id": "SurveyDB", "name": "測量データベース", "cost": 4, "power": 3, "type": "MACHINE", "category": "機材", "upkeep": 1, "desc": "場にいる限り、毎ターン開始時に1枚引く。"},
+    {"id": "Demolition", "name": "解体工事", "cost": 4, "power": 0, "type": "SPELL", "desc": "相手の機材1つを破壊。"},
+    {"id": "Layoff", "name": "リストラ", "cost": 3, "power": 0, "type": "SPELL", "desc": "相手の人材1人を破壊。"},
+    {"id": "Restructure", "name": "人員整理", "cost": 5, "power": 0, "type": "SPELL", "desc": "相手の人材を最大2人まで破壊。"},
+    {"id": "Removal", "name": "設備撤去", "cost": 6, "power": 0, "type": "SPELL", "desc": "相手の機材を最大2つまで破壊。"},
+    {"id": "SiteFire", "name": "現場火災", "cost": 7, "power": 0, "type": "SPELL", "desc": "相手の場のカード全てを破壊。自分の最大AP-2。"},
+    {"id": "Rehire", "name": "再雇用", "cost": 2, "power": 0, "type": "SPELL", "desc": "墓地から人材1人を手札に。"},
+    {"id": "Salvage", "name": "サルベージ", "cost": 4, "power": 0, "type": "SPELL", "desc": "墓地から任意のカード1枚を手札に。"},
+    {"id": "Recovery", "name": "復旧作業", "cost": 5, "power": 0, "type": "SPELL", "desc": "墓地から最大2枚を手札に。"},
+    {"id": "DataRestore", "name": "記録復元", "cost": 3, "power": 0, "type": "SPELL", "desc": "墓地からスペルカードを手札に。"},
     {"id": "Goal30", "name": "工期内完遂", "cost": 4, "power": 0, "type": "GOAL", "desc": "スコア30以上で勝利。"},
     {"id": "GoalFinal", "name": "社長決裁", "cost": 10, "power": 0, "type": "GOAL", "desc": "スコア10以上で勝利。"},
 ]
@@ -87,8 +105,8 @@ class GameInstance:
 
     def reset(self):
         self.players = {
-            "p1": {"ap": 2, "max_ap": 2, "score": 0, "hand": [], "field": [], "deck": [], "ready": False, "rush_used": False},
-            "p2": {"ap": 2, "max_ap": 2, "score": 0, "hand": [], "field": [], "deck": [], "ready": False, "rush_used": False}
+            "p1": {"ap": 2, "max_ap": 2, "score": 0, "hand": [], "field": [], "deck": [], "graveyard": [], "ready": False, "rush_used": False},
+            "p2": {"ap": 2, "max_ap": 2, "score": 0, "hand": [], "field": [], "deck": [], "graveyard": [], "ready": False, "rush_used": False}
         }
         self.turn = "p1"
         self.turn_count = 1
@@ -238,6 +256,7 @@ def handle_selection(data):
         opp = game.players[sel['target_player']]
         destroyed = opp['field'][target_idx]
         opp['field'].pop(target_idx)
+        opp['graveyard'].append(destroyed)  # 墓地に送る
         game.log.append(f"{pid.upper()}: {destroyed['name']}を破壊!")
     
     elif sel['type'] == 'freeze_enemy':
@@ -249,6 +268,7 @@ def handle_selection(data):
     elif sel['type'] == 'sacrifice_for_upkeep':
         destroyed = p['field'][target_idx]
         p['field'].pop(target_idx)
+        p['graveyard'].append(destroyed)  # 墓地に送る
         game.log.append(f"{pid.upper()}: {destroyed['name']}を破棄")
         # 再計算
         upkeep = sum(c.get('upkeep', 0) for c in p['field'])
@@ -276,6 +296,7 @@ def handle_selection(data):
     elif sel['type'] == 'sacrifice_for_rush':
         destroyed = p['field'][target_idx]
         p['field'].pop(target_idx)
+        p['graveyard'].append(destroyed)  # 墓地に送る
         game.log.append(f"{pid.upper()}: 突貫工事の反動で{destroyed['name']}が破壊")
         # Rush終了後、ターン終了処理を続行
         game.pending_selection = None
@@ -284,6 +305,130 @@ def handle_selection(data):
         # ターンを切り替える
         end_turn_internal(game, pid, room_id)
         return
+    
+    elif sel['type'] == 'discard_enemy_hand':
+        # 図面紛失：相手の手札を捨てる
+        opp = game.players[sel['target_player']]
+        discarded = opp['hand'][target_idx]
+        opp['hand'].pop(target_idx)
+        game.log.append(f"{pid.upper()}: 相手の{discarded['name']}を捨てさせた!")
+    
+    elif sel['type'] == 'recycle_from_graveyard':
+        # 機材リサイクル：墓地から手札に戻す
+        recycled = p['graveyard'][target_idx]
+        p['graveyard'].pop(target_idx)
+        p['hand'].append(recycled)
+        game.log.append(f"{pid.upper()}: {recycled['name']}を墓地から回収!")
+    
+    elif sel['type'] == 'survey_plan':
+        # 測量計画：選んだカードを山札の一番上に
+        top_cards = sel['top_cards']
+        selected = top_cards[target_idx]
+        # 山札の上3枚を削除
+        p['deck'] = p['deck'][3:]
+        # 選んだカードを一番上に
+        p['deck'].insert(0, selected)
+        # 残りを一番下に
+        for i, card in enumerate(top_cards):
+            if i != target_idx:
+                p['deck'].append(card)
+        game.log.append(f"{pid.upper()}: 山札を整理した!")
+    
+    elif sel['type'] == 'search_deck':
+        # デッキサーチ：選んだカードを手札に
+        searched = p['deck'][target_idx]
+        p['deck'].pop(target_idx)
+        p['hand'].append(searched)
+        import random
+        random.shuffle(p['deck'])  # デッキをシャッフル
+        game.log.append(f"{pid.upper()}: {searched['name']}をサーチ!")
+    
+    elif sel['type'] == 'destroy_enemy_equipment':
+        # 解体工事：相手の機材を破壊
+        opp = game.players[sel['target_player']]
+        destroyed = opp['field'][target_idx]
+        opp['field'].pop(target_idx)
+        opp['graveyard'].append(destroyed)
+        game.log.append(f"{pid.upper()}: 相手の{destroyed['name']}を破壊!")
+    
+    elif sel['type'] == 'destroy_enemy_personnel':
+        # リストラ：相手の人材を破壊
+        opp = game.players[sel['target_player']]
+        destroyed = opp['field'][target_idx]
+        opp['field'].pop(target_idx)
+        opp['graveyard'].append(destroyed)
+        game.log.append(f"{pid.upper()}: 相手の{destroyed['name']}を解雇!")
+    
+    elif sel['type'] == 'destroy_multi_personnel':
+        # 人員整理：複数の人材を破壊
+        opp = game.players[sel['target_player']]
+        destroyed = opp['field'][target_idx]
+        opp['field'].pop(target_idx)
+        opp['graveyard'].append(destroyed)
+        sel['count'] += 1
+        game.log.append(f"{pid.upper()}: 相手の{destroyed['name']}を解雇!")
+        
+        # まだ選択可能で、選択を続けるか確認
+        if sel['count'] < sel['max_count'] and opp['field']:
+            # ターゲットリストを更新（人材のみ）
+            personnel = [i for i, c in enumerate(opp['field']) if c.get('category') == '人材']
+            if personnel:
+                sel['targets'] = personnel
+                emit('update_ui', vars(game), room=room_id)
+                return
+    
+    elif sel['type'] == 'destroy_multi_equipment':
+        # 設備撤去：複数の機材を破壊
+        opp = game.players[sel['target_player']]
+        destroyed = opp['field'][target_idx]
+        opp['field'].pop(target_idx)
+        opp['graveyard'].append(destroyed)
+        sel['count'] += 1
+        game.log.append(f"{pid.upper()}: 相手の{destroyed['name']}を撤去!")
+        
+        # まだ選択可能で、選択を続けるか確認
+        if sel['count'] < sel['max_count'] and opp['field']:
+            # ターゲットリストを更新（機材のみ）
+            machines = [i for i, c in enumerate(opp['field']) if c.get('category') == '機材']
+            if machines:
+                sel['targets'] = machines
+                emit('update_ui', vars(game), room=room_id)
+                return
+    
+    elif sel['type'] == 'recover_personnel':
+        # 再雇用：墓地から人材を回収
+        recovered = p['graveyard'][target_idx]
+        p['graveyard'].pop(target_idx)
+        p['hand'].append(recovered)
+        game.log.append(f"{pid.upper()}: {recovered['name']}を再雇用!")
+    
+    elif sel['type'] == 'recover_any':
+        # サルベージ：墓地から任意のカードを回収
+        recovered = p['graveyard'][target_idx]
+        p['graveyard'].pop(target_idx)
+        p['hand'].append(recovered)
+        game.log.append(f"{pid.upper()}: {recovered['name']}を回収!")
+    
+    elif sel['type'] == 'recover_multi':
+        # 復旧作業：墓地から複数回収
+        recovered = p['graveyard'][target_idx]
+        p['graveyard'].pop(target_idx)
+        p['hand'].append(recovered)
+        sel['count'] += 1
+        game.log.append(f"{pid.upper()}: {recovered['name']}を回収!")
+        
+        # まだ選択可能で、選択を続けるか確認
+        if sel['count'] < sel['max_count'] and p['graveyard']:
+            sel['targets'] = list(range(len(p['graveyard'])))
+            emit('update_ui', vars(game), room=room_id)
+            return
+    
+    elif sel['type'] == 'recover_spell':
+        # 記録復元：墓地からスペルを回収
+        recovered = p['graveyard'][target_idx]
+        p['graveyard'].pop(target_idx)
+        p['hand'].append(recovered)
+        game.log.append(f"{pid.upper()}: {recovered['name']}を復元!")
     
     game.pending_selection = None
     recalc_scores(game)
@@ -317,6 +462,11 @@ def handle_play(data):
             if f["id"] == base_id:
                 play_cost, evolve_target_idx, is_evolution = 1, i, True
                 break
+    
+    # ヘルメット効果：人材のコスト-1
+    if card.get("category") == "人材":
+        helmet_count = sum(1 for f in p["field"] if f["id"] == "Helmet")
+        play_cost = max(0, play_cost - helmet_count)
 
     if p["ap"] >= play_cost:
         card = p["hand"].pop(idx)
@@ -369,14 +519,16 @@ def handle_play(data):
                 game.next_weather = "晴天"
                 game.log.append(f"{pid.upper()}: 次ターンは晴天!")
             elif card["id"] == "Training":
-                if p["field"]:
+                # 人材を強化（category="人材"）
+                personnel = [i for i, c in enumerate(p["field"]) if c.get("category") == "人材"]
+                if personnel:
                     game.pending_selection = {
                         "type": "buff_ally",
                         "player": pid,
-                        "targets": list(range(len(p["field"]))),
+                        "targets": personnel,
                         "card_id": "Training"
                     }
-                    game.log.append(f"{pid.upper()}: 強化する社員を選んでください")
+                    game.log.append(f"{pid.upper()}: 強化する人材を選んでください")
                     emit('update_ui', vars(game), room=room_id)
                     return
             elif card["id"] == "Safety":
@@ -432,6 +584,239 @@ def handle_play(data):
                 opp = game.players["p2" if pid == "p1" else "p1"]
                 opp["max_ap"] = max(1, opp["max_ap"] - 2)
                 game.log.append(f"{pid.upper()}: 相手の最大APを2削った!")
+            elif card["id"] == "BlueprintLoss":
+                # 図面紛失：相手の手札を見て1枚捨てさせる
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                if opp["hand"]:
+                    game.pending_selection = {
+                        "type": "discard_enemy_hand",
+                        "player": pid,
+                        "target_player": "p2" if pid == "p1" else "p1",
+                        "targets": list(range(len(opp["hand"]))),
+                        "card_id": "BlueprintLoss"
+                    }
+                    game.log.append(f"{pid.upper()}: 相手の手札を見て1枚選んでください")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
+            elif card["id"] == "DataTheft":
+                # データ盗用：相手の手札をランダムに1枚捨てさせる
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                if opp["hand"]:
+                    import random
+                    discarded = opp["hand"].pop(random.randint(0, len(opp["hand"]) - 1))
+                    game.log.append(f"{pid.upper()}: {discarded['name']}を盗んで捨てた!")
+            elif card["id"] == "AllOrNothing":
+                # 一か八か：コイントス
+                import random
+                result = random.choice([True, False])
+                if result:  # 表
+                    for _ in range(5):
+                        if p["deck"]: p["hand"].append(p["deck"].pop(0))
+                    game.log.append(f"{pid.upper()}: コイントス成功！5枚引いた!")
+                else:  # 裏
+                    p["hand"] = []
+                    if p["field"]:
+                        destroyed_idx = random.randint(0, len(p["field"]) - 1)
+                        destroyed = p["field"].pop(destroyed_idx)
+                        p["graveyard"].append(destroyed)
+                        game.log.append(f"{pid.upper()}: コイントス失敗！手札全捨て＋{destroyed['name']}破壊!")
+                    else:
+                        game.log.append(f"{pid.upper()}: コイントス失敗！手札全捨て!")
+            elif card["id"] == "Recycle":
+                # 機材リサイクル：墓地から機材を1つ手札に戻す
+                graveyard_machines = [i for i, c in enumerate(p["graveyard"]) if c.get("category") == "機材"]
+                if graveyard_machines:
+                    game.pending_selection = {
+                        "type": "recycle_from_graveyard",
+                        "player": pid,
+                        "targets": graveyard_machines,
+                        "card_id": "Recycle"
+                    }
+                    game.log.append(f"{pid.upper()}: 墓地から機材を1つ選んでください")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
+            elif card["id"] == "SurveyPlan":
+                # 測量計画：山札から3枚見て1枚を山札の一番上、残りを山札の一番下に
+                if len(p["deck"]) >= 3:
+                    game.pending_selection = {
+                        "type": "survey_plan",
+                        "player": pid,
+                        "targets": [0, 1, 2],
+                        "top_cards": [p["deck"][0], p["deck"][1], p["deck"][2]],
+                        "card_id": "SurveyPlan"
+                    }
+                    game.log.append(f"{pid.upper()}: 山札の上3枚から1枚選んでください")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
+            elif card["id"] == "EmergencyOrder":
+                # 緊急発注：デッキから機材を1枚サーチ
+                machines = [i for i, c in enumerate(p["deck"]) if c.get("category") == "機材"]
+                if machines:
+                    game.pending_selection = {
+                        "type": "search_deck",
+                        "player": pid,
+                        "targets": machines,
+                        "card_id": "EmergencyOrder"
+                    }
+                    game.log.append(f"{pid.upper()}: デッキから機材を1枚選んでください")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
+            elif card["id"] == "Dispatch":
+                # 人材派遣：デッキから人材を1枚サーチ
+                personnel = [i for i, c in enumerate(p["deck"]) if c.get("category") == "人材"]
+                if personnel:
+                    game.pending_selection = {
+                        "type": "search_deck",
+                        "player": pid,
+                        "targets": personnel,
+                        "card_id": "Dispatch"
+                    }
+                    game.log.append(f"{pid.upper()}: デッキから人材を1枚選んでください")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
+            elif card["id"] == "FullyPrepared":
+                # 準備万端：場に異なる5種類のカードがあればデッキから勝利カードをサーチ
+                unique_cards = set(c["id"] for c in p["field"])
+                if len(unique_cards) >= 5:
+                    goals = [i for i, c in enumerate(p["deck"]) if c["type"] == "GOAL"]
+                    if goals:
+                        game.pending_selection = {
+                            "type": "search_deck",
+                            "player": pid,
+                            "targets": goals,
+                            "card_id": "FullyPrepared"
+                        }
+                        game.log.append(f"{pid.upper()}: デッキから勝利カードを1枚選んでください")
+                        emit('update_ui', vars(game), room=room_id)
+                        return
+                else:
+                    game.log.append(f"{pid.upper()}: 場のカード種類が不足！({len(unique_cards)}/5)")
+            elif card["id"] == "Demolition":
+                # 解体工事：相手の機材1つを破壊
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                machines = [i for i, c in enumerate(opp["field"]) if c.get("category") == "機材"]
+                if machines:
+                    game.pending_selection = {
+                        "type": "destroy_enemy_equipment",
+                        "player": pid,
+                        "target_player": "p2" if pid == "p1" else "p1",
+                        "targets": machines,
+                        "card_id": "Demolition"
+                    }
+                    game.log.append(f"{pid.upper()}: 破壊する相手の機材を選んでください")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
+            elif card["id"] == "Layoff":
+                # リストラ：相手の人材1人を破壊
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                personnel = [i for i, c in enumerate(opp["field"]) if c.get("category") == "人材"]
+                if personnel:
+                    game.pending_selection = {
+                        "type": "destroy_enemy_personnel",
+                        "player": pid,
+                        "target_player": "p2" if pid == "p1" else "p1",
+                        "targets": personnel,
+                        "card_id": "Layoff"
+                    }
+                    game.log.append(f"{pid.upper()}: 破壊する相手の人材を選んでください")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
+            elif card["id"] == "Restructure":
+                # 人員整理：相手の人材を最大2人まで破壊
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                personnel = [i for i, c in enumerate(opp["field"]) if c.get("category") == "人材"]
+                if personnel:
+                    game.pending_selection = {
+                        "type": "destroy_multi_personnel",
+                        "player": pid,
+                        "target_player": "p2" if pid == "p1" else "p1",
+                        "targets": personnel,
+                        "count": 0,
+                        "max_count": min(2, len(personnel)),
+                        "card_id": "Restructure"
+                    }
+                    game.log.append(f"{pid.upper()}: 破壊する人材を選んでください（最大2人）")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
+            elif card["id"] == "Removal":
+                # 設備撤去：相手の機材を最大2つまで破壊
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                machines = [i for i, c in enumerate(opp["field"]) if c.get("category") == "機材"]
+                if machines:
+                    game.pending_selection = {
+                        "type": "destroy_multi_equipment",
+                        "player": pid,
+                        "target_player": "p2" if pid == "p1" else "p1",
+                        "targets": machines,
+                        "count": 0,
+                        "max_count": min(2, len(machines)),
+                        "card_id": "Removal"
+                    }
+                    game.log.append(f"{pid.upper()}: 破壊する機材を選んでください（最大2つ）")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
+            elif card["id"] == "SiteFire":
+                # 現場火災：相手の場のカード全てを破壊、自分の最大AP-2
+                opp = game.players["p2" if pid == "p1" else "p1"]
+                destroyed_count = len(opp["field"])
+                for c in opp["field"]:
+                    opp["graveyard"].append(c)
+                opp["field"] = []
+                p["max_ap"] = max(1, p["max_ap"] - 2)
+                game.log.append(f"{pid.upper()}: 現場火災で相手の場を全滅させた！（{destroyed_count}枚破壊）")
+                game.log.append(f"{pid.upper()}: 自分の最大AP-2")
+            elif card["id"] == "Rehire":
+                # 再雇用：墓地から人材1人を手札に
+                personnel = [i for i, c in enumerate(p["graveyard"]) if c.get("category") == "人材"]
+                if personnel:
+                    game.pending_selection = {
+                        "type": "recover_personnel",
+                        "player": pid,
+                        "targets": personnel,
+                        "card_id": "Rehire"
+                    }
+                    game.log.append(f"{pid.upper()}: 回収する人材を選んでください")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
+            elif card["id"] == "Salvage":
+                # サルベージ：墓地から任意のカード1枚を手札に
+                if p["graveyard"]:
+                    game.pending_selection = {
+                        "type": "recover_any",
+                        "player": pid,
+                        "targets": list(range(len(p["graveyard"]))),
+                        "card_id": "Salvage"
+                    }
+                    game.log.append(f"{pid.upper()}: 回収するカードを選んでください")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
+            elif card["id"] == "Recovery":
+                # 復旧作業：墓地から最大2枚を手札に
+                if p["graveyard"]:
+                    game.pending_selection = {
+                        "type": "recover_multi",
+                        "player": pid,
+                        "targets": list(range(len(p["graveyard"]))),
+                        "count": 0,
+                        "max_count": min(2, len(p["graveyard"])),
+                        "card_id": "Recovery"
+                    }
+                    game.log.append(f"{pid.upper()}: 回収するカードを選んでください（最大2枚）")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
+            elif card["id"] == "DataRestore":
+                # 記録復元：墓地からスペルカードを手札に
+                spells = [i for i, c in enumerate(p["graveyard"]) if c["type"] == "SPELL"]
+                if spells:
+                    game.pending_selection = {
+                        "type": "recover_spell",
+                        "player": pid,
+                        "targets": spells,
+                        "card_id": "DataRestore"
+                    }
+                    game.log.append(f"{pid.upper()}: 回収するスペルを選んでください")
+                    emit('update_ui', vars(game), room=room_id)
+                    return
 
             # 通常のログ記録（進化以外）
             if not is_evolution:
@@ -560,6 +945,12 @@ def end_turn_internal(game, player_id, room_id):
     # ドローフェーズ
     if p["deck"]: 
         p["hand"].append(p["deck"].pop(0))
+    
+    # 測量データベースの効果：場にあれば追加ドロー
+    if any(c["id"] == "SurveyDB" for c in p["field"]):
+        if p["deck"]:
+            p["hand"].append(p["deck"].pop(0))
+            game.log.append(f"{game.turn.upper()}: 測量データベースで追加ドロー!")
     
     recalc_scores(game)
     emit('update_ui', vars(game), room=room_id)
