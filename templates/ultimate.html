@@ -1049,7 +1049,18 @@
                     "Goal30","GoalFinal"  // 勝利条件
                 ]
             };
-            myDeck = [...presets[mode]];
+            const preset = presets[mode] || [];
+            // Ensure recommended decks always load at exactly 40 cards.
+            if (preset.length >= 40) {
+                myDeck = preset.slice(0, 40);
+            } else {
+                myDeck = [...preset];
+                let i = 0;
+                while (myDeck.length < 40 && preset.length > 0) {
+                    myDeck.push(preset[i % preset.length]);
+                    i += 1;
+                }
+            }
             document.getElementById('deck-count').innerText = myDeck.length;
             renderDeckGrid();
         }
