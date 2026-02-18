@@ -474,7 +474,7 @@
                 <div id="my-ap" style="font-size:28px; color:#2ecc71;">2/2</div>
             </div>
             <div id="log" class="log"></div>
-            <button id="end-turn-btn" onclick="socket.emit('end_turn',{player_id:myId})" class="btn btn-gold" style="width:100%; font-size:20px;">ターン終了</button>
+            <button id="end-turn-btn" onclick="handleEndTurnClick()" class="btn btn-gold" style="width:100%; font-size:20px;">ターン終了</button>
             <button id="shakapachi-btn" onclick="shuffleHand()" class="btn" style="width:100%; font-size:20px; background: linear-gradient(135deg, var(--purple), var(--cyan)); display:none;">しゃかぱち</button>
         </div>
     </div>
@@ -488,6 +488,8 @@
         let currentEditingSlot = null;  // 現在編集中のデッキスロット
         let savedDecks = [null, null, null];  // 3つのデッキスロット
         let shakapachiCount = {p1: 0, p2: 0};  // しゃかぱちカウント
+        let endTurnCooldownUntil = 0;
+        let endTurnCooldownTimer = null;
         
         // ページ読み込み時にlocalStorageからデータを復元
         window.addEventListener('DOMContentLoaded', () => {
@@ -635,6 +637,16 @@
         
         // デッキ編集画面からタイトルに戻る
         function backToTitle() {
+            const resultModal = document.getElementById('result-modal');
+            const isResultVisible = resultModal && window.getComputedStyle(resultModal).display !== 'none';
+            if (isResultVisible) {
+                resultModal.style.display = 'none';
+                document.getElementById('screen-battle').style.display = 'none';
+                document.getElementById('screen-waiting').style.display = 'none';
+                document.getElementById('screen-deck-select').style.display = 'none';
+                document.getElementById('screen-title').style.display = 'flex';
+                return;
+            }
             // 編集中の場合は確認
             if (currentEditingSlot !== null) {
                 if (confirm('編集を中断してデッキ管理に戻りますか？')) {
@@ -1124,6 +1136,29 @@
         function selectTarget(idx) {
             socket.emit('select_target', {player_id: myId, target_index: idx});
         }
+
+        function updateEndTurnButtonState() {
+            const btn = document.getElementById('end-turn-btn');
+            if (!btn) return;
+            const isCooling = Date.now() < endTurnCooldownUntil;
+            btn.disabled = isCooling;
+            btn.style.opacity = isCooling ? '0.6' : '1';
+            btn.style.cursor = isCooling ? 'not-allowed' : 'pointer';
+        }
+
+        function setEndTurnCooldown(ms) {
+            endTurnCooldownUntil = Date.now() + ms;
+            updateEndTurnButtonState();
+            if (endTurnCooldownTimer) clearTimeout(endTurnCooldownTimer);
+            endTurnCooldownTimer = setTimeout(() => {
+                updateEndTurnButtonState();
+            }, ms);
+        }
+
+        function handleEndTurnClick() {
+            if (Date.now() < endTurnCooldownUntil) return;
+            socket.emit('end_turn', {player_id: myId});
+        }
         
         // 相手の手札をアニメーション
         function animateOpponentHand() {
@@ -1182,6 +1217,7 @@
             if (s.turn === myId) {
                 endTurnBtn.style.display = 'block';
                 shakapachiBtn.style.display = 'none';
+                updateEndTurnButtonState();
             } else {
                 endTurnBtn.style.display = 'none';
                 shakapachiBtn.style.display = 'block';
@@ -1194,6 +1230,9 @@
                 txt.innerHTML = `Day ${s.turn_count} <br> PLAYER ${s.turn === 'p1' ? '1' : '2'} <br> <div style="font-size:40px; margin-top:10px;">${s.weather}</div>`;
                 ov.style.display = 'flex';
                 setTimeout(() => { ov.style.display = 'none'; }, 2000);
+                if (s.turn === myId) {
+                    setEndTurnCooldown(5000);
+                }
             }
             lastTurn = s.turn;
             
